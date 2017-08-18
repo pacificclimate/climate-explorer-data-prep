@@ -3,6 +3,18 @@
 [![Build Status](https://travis-ci.org/pacificclimate/climate-explorer-data-prep.svg?branch=master)](https://travis-ci.org/pacificclimate/climate-explorer-data-prep)
 [![Code Climate](https://codeclimate.com/github/pacificclimate/climate-explorer-data-prep/badges/gpa.svg)](https://codeclimate.com/github/pacificclimate/climate-explorer-data-prep)
 
+## Historical note
+
+Prior to 2017 Aug 17, these scripts were part of the 
+[Climate Explorer backend](https://github.com/pacificclimate/climate-explorer-backend).
+
+These scripts are now a separate project with their own repository (this one).
+A full commit history of the data prep scripts was retained during the migration to this repo. 
+Most (but, mysteriously, not quite all) of the commit history for non-data prep code was pruned during migration.
+
+No releases in the original CE backend specifically related to or documented changes to these scripts, 
+so this project starts with release version 0.1.0.
+
 ## Installation
 
 Clone the repo onto the target machine.
@@ -21,23 +33,44 @@ as follows:
 ```bash
 $ python3 -m venv venv
 $ source venv/bin/activate
-(venv) $ pip install -U pip setuptools wheel  # is this necessary? why?
-(venv) $ pip install -i https://pypi.pacificclimate.org/simple/ -r dp/requirements.txt
-(venv) $ pip install .
+(venv) $ pip install -U pip setuptools wheel  # why are setuptools and wheel necessary?
+(venv) $ pip install -i https://pypi.pacificclimate.org/simple/ -r requirements.txt
+(venv) $ pip install .  # or pip install -e .
 ```
 
-See included bash script `process-climo-means.sh` for an example of using this script.
+This installs the scripts described below.
+To make their command-line invocation a little nicer, the script files lack the `.py` extension.
+They are, however, Python scripts.
 
-## Releasing
+## Development
 
-Creating a versioned release involves:
+### Testing
 
-1. Incrementing `__version__` in `setup.py`
+Very regrettably, it is prohibitively difficult to install `cdo` 
+([Climate Data Operators](https://code.mpimet.mpg.de/projects/cdo/wiki/Cdo%7Brbpy%7D))
+in the Travis CI environment. 
+(NetCDF support isn't built into the debian cdo pacakges. Installing NetCDF proved very hard. Argh.)
+That said, `.travis.yml` is configured with commented out portions in anticipation of the day we can really run these
+tests in Travis.
+
+We can and MUST, however, run the tests on our development machines. It's as simple as
+
+```bash
+pytest
+```
+
+(Oh, the unintended punning!)
+
+### Releasing
+
+To create a versioned release:
+
+1. Increment `__version__` in `setup`
 2. Summarize the changes from the last release in `NEWS.md`
 3. Commit these changes, then tag the release:
 
   ```bash
-git add setup.py NEWS.md
+git add setup NEWS.md
 git commit -m"Bump to version x.x.x"
 git tag -a -m"x.x.x" x.x.x
 git push --follow-tags
@@ -85,16 +118,16 @@ All output files contain PCIC standard metadata attributes appropriate to climat
 
 ```bash
 # Dry run
-generate_climos.py --dry-run -o outdir files...
+generate_climos --dry-run -o outdir files...
 
 # Use defaults:
-generate_climos.py -o outdir files...
+generate_climos -o outdir files...
 
 # Split output into separate files per dependent variable and per averaging interval 
-generate_climos.py --split-vars --split-intervals -o outdir files...
+generate_climos --split-vars --split-intervals -o outdir files...
 ```
 
-Usage is further detailed in the script help information: `generate_climos.py -h`
+Usage is further detailed in the script help information: `generate_climos -h`
 
 #### PCIC Job Queueing tool for processing many / large files
 
@@ -128,7 +161,7 @@ The input file is not modified.
 #### Usage
 
 ```bash
-split_merged_climos.py -o outdir files...
+split_merged_climos -o outdir files...
 ```
 
 Filenames are automatically generated for the split files.
@@ -147,10 +180,17 @@ This directory is created if it does not exist.
 Some NetCDF files have improper metadata: missing, invalid, or incorrectly named global or variable metadata
 attributes. There are no really convenient tools for updating metadata, so we rolled our own, `update_metadata`.
 
-`update_metadata` takes two arguments: 
+#### Usage
 
-* the filepath of an updates file that specifies what to do to the metdata it finds in the NetCDF file
-* the filepath of a NetCDF file to update
+```bash
+# update metadata in ncfile according to instructions in updates
+update_metadata -u updates ncfile
+```
+
+`update_metadata` takes an option (`-u`) and an argument: 
+
+* `-u`: the filepath of an updates file that specifies what to do to the metdata it finds in the NetCDF file
+* argument: the filepath of a NetCDF file to update
 
 #### Updates file: specifying updates to make
 
@@ -231,13 +271,6 @@ Global attributes:
 
 Attributes of variable named `temperature`:
 * set attribute `units` to (string) `degrees_C`
-
-#### Usage
-
-```bash
-# update metadata in ncfile according to instructions in updates
-update_metadata.py -u updates ncfile
-```
 
 ## Indexing climatological output files
 
