@@ -1,0 +1,7 @@
+python-dateutil
+cdo
+nchelpers
+pint
+PyYAML
+# for testing
+pytest
