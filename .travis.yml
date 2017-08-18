@@ -1,0 +1,18 @@
+# We can't run our tests because installing cdo in Travis is just too hard: NetCDF support isn't built into the
+# debian cdo pacakges. Once that is resolved (i.e., install the NetCDF support before installing cdo),
+# the commented-out lines can be uncommented to run the data prep tests too.
+language: python
+dist: trusty
+sudo: false
+#addons:
+#  apt:
+#    packages:
+#      - cdo
+python:
+  - 3.5
+install:
+  - pip install -I pytest>=3.0.0
+  - pip install -i https://pypi.pacificclimate.org/simple/ .
+script:
+  - echo "wait for it"
+#  - py.test -v
