@@ -2,9 +2,7 @@ import os
 import os.path
 import logging
 import shutil
-import sys
 
-from argparse import ArgumentParser
 from datetime import datetime
 import dateutil.parser
 import numpy as np
@@ -383,56 +381,3 @@ def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
         climo_bnds_var[:] = date2num(climo_bounds, cf.time_var.units, cf.time_var.calendar)
 
     return climo_filepath
-
-def main(args):
-    if args.dry_run:
-        logger.info('DRY RUN')
-        for filepath in args.filepaths:
-            logger.info('')
-            logger.info('File: {}'.format(filepath))
-            try:
-                input_file = CFDataset(filepath)
-            except Exception as e:
-                logger.info('{}: {}'.format(e.__class__.__name__, e))
-            else:
-                logger.info('climo_periods: {}'.format(input_file.climo_periods.keys()))
-                for attr in 'project institution model emissions run'.split():
-                    try:
-                        logger.info('{}: {}'.format(attr, getattr(input_file.metadata, attr)))
-                    except Exception as e:
-                        logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-                for attr in 'dependent_varnames time_resolution is_multi_year_mean'.split():
-                    logger.info('{}: {}'.format(attr, getattr(input_file, attr)))
-        sys.exit(0)
-
-    for filepath in args.filepaths:
-        logger.info('')
-        logger.info('Processing: {}'.format(filepath))
-        try:
-            input_file = CFDataset(filepath)
-        except Exception as e:
-            logger.info('{}: {}'.format(e.__class__.__name__, e))
-        else:
-            for _, t_range in input_file.climo_periods.items():
-                create_climo_files(args.outdir, input_file, *t_range,
-                                   convert_longitudes=args.convert_longitudes, split_vars=args.split_vars)
-
-if __name__ == '__main__':
-    parser = ArgumentParser(description='Create climatologies from CMIP5 data')
-    parser.add_argument('filepaths', nargs='*', help='Files to process')
-    # parser.add_argument('-c', '--climo', nargs= '+',  help='Climatological periods to generate.
-    # IN PROGRESS. Defaults to all available in the input file. Ex: -c 6190 7100 8100 2020 2050 2080')
-    parser.add_argument('-l', '--loglevel', help='Logging level',
-                        choices=log_level_choices, default='INFO')
-    parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true')
-    parser.add_argument('-g', '--convert-longitudes', type=strtobool, dest='convert_longitudes',
-                        help='Transform longitude range from [0, 360) to [-180, 180)')
-    parser.add_argument('-v', '--split-vars', type=strtobool, dest='split_vars',
-                        help='Generate a separate file for each dependent variable in the file')
-    parser.add_argument('-i', '--split-intervals', type=strtobool, dest='split_intervals',
-                        help='Generate a separate file for each climatological period')
-    parser.add_argument('-o', '--outdir', required=True, help='Output folder')
-    parser.set_defaults(dry_run=False, convert_longitudes=True, split_vars=True, split_intervals=True)
-    args = parser.parse_args()
-    logger.setLevel(getattr(logging, args.loglevel))
-    main(args)
