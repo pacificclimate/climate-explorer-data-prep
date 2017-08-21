@@ -1,5 +1,6 @@
 #!python
 from argparse import ArgumentParser
+import logging
 import sys
 
 from nchelpers import CFDataset
