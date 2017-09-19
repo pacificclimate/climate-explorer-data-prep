@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 0.2.1
+
+*2017 Sep 18*
+
+* Fix bug in ``update_metadata`` delete attribute.
+
 ## 0.2.0
 
 *2017 Sep 18*
