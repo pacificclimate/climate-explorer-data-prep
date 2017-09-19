@@ -210,6 +210,9 @@ You only need to know a couple of things about YAML and how we employ it to use 
     * The *value* for a first-level key is the indented block below it.
   * The second (indented) level specifies the attribute and the change to be made to it.
     See below for details.
+    * If you care about the order that attributes are processed in (and will appear in any naive
+      listing of the attributes), prefix all of the second-level items with a dash (-). This causes
+      the attributes to be processed in order the order listed in the updates file.
 
 ##### Delete attribute
 
@@ -220,6 +223,14 @@ global-or-variable-name:
     name:
 ```
 
+or (to process in order)
+
+```yaml
+global-or-variable-name:
+    - name:
+```
+
+
 ##### Set attribute value
 
 Set the value of the attribute `name` to `value`. If the attribute does not yet exist, it is created.
@@ -227,6 +238,13 @@ Set the value of the attribute `name` to `value`. If the attribute does not yet 
 ```yaml
 global-or-variable-name:
     name: value
+```
+
+or (to process in order)
+
+```yaml
+global-or-variable-name:
+    - name: value
 ```
 
 Note: This script is clever (courtesy of YAML cleverness) about the data type of the value specified. 
@@ -247,6 +265,13 @@ global-or-variable-name:
     newname: <-oldname
 ```
 
+or (to process in order)
+
+```yaml
+global-or-variable-name:
+    - newname: <-oldname
+```
+
 Note: The special sequence `<-` after the colon indicates renaming. 
 This means that you can't set an attribute with a value that begins with `<-`. Sorry.
 
@@ -260,6 +285,18 @@ global:
 
 temperature:
     units: degrees_C
+```
+
+or (to process in order)
+
+```yaml
+global:
+    - foo: 
+    - bar: 42
+    - baz: <-qux
+
+temperature:
+    - units: degrees_C
 ```
 
 This file causes a NetCDF file to be updated in the following way:
