@@ -212,7 +212,7 @@ You only need to know a couple of things about YAML and how we employ it to use 
     See below for details.
     * If you care about the order that attributes are processed in (and will appear in any naive
       listing of the attributes), prefix all of the second-level items with a dash (-). This causes
-      the attributes to be processed in order the order listed in the updates file.
+      the attributes to be processed in the order listed in the updates file.
 
 ##### Delete attribute
 
