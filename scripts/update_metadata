@@ -13,7 +13,7 @@ from netCDF4 import Dataset
 import yaml
 import six
 
-rename_prefix = '<-'  # Or some other unlikely sequence of chars
+rename_prefix = '<-'  # Or some other unlikely sequence of characters
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', "%Y-%m-%d %H:%M:%S")
 handler = logging.StreamHandler()
@@ -28,7 +28,7 @@ def modify_attribute(target, attr, value):
     if value == None:
         logger.info("\tDeleting attribute '{}'".format(attr))
         if hasattr(target, attr):
-            delattr(target, value)
+            delattr(target, attr)
     else:
         if isinstance(value, six.string_types) and value.startswith(rename_prefix):
             old_name = value[len(rename_prefix):]
