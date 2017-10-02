@@ -1,10 +1,16 @@
 # News / Release Notes
 
+## 0.2.2
+
+*2017 Oct 02*
+
+* Add expression evalution feature to ``update_metadata``. See README for details.
+
 ## 0.2.1
 
 *2017 Sep 18*
 
-* Fix bug in ``update_metadata`` delete attribute.
+* Fix bug in ``update_metadata`` delete-attribute feature.
 
 ## 0.2.0
 
