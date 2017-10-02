@@ -231,7 +231,7 @@ global-or-variable-name:
 ```
 
 
-##### Set attribute value
+##### Set attribute to simple value
 
 Set the value of the attribute `name` to `value`. If the attribute does not yet exist, it is created.
 
@@ -255,6 +255,49 @@ Note: This script is clever (courtesy of YAML cleverness) about the data type of
   If you need to force a numeric-looking value to be a string, enclose it in single or double quotes (e.g., `'123'`).
 
 More details on the [Wikipedia YAML page](https://en.wikipedia.org/wiki/YAML#Advanced_components).
+
+##### Set attribute to value of Python expression
+
+Set the value of the attribute `name` to the value of the Python expression `expression`, evaluated in a 
+context that includes the values of all NetCDF attributes as variables, and with a selection of 
+additional custom functions available.
+
+All standard Python functions are available -- including dangerous ones like `os.remove`, 
+so don't get too clever.
+
+For convenience, the values of all attributes of the target object are made available as local variables
+in the execution context. For example, the attribute named `product` in the global attribute set can be
+accessed in the expression as the variable `product`. It can be used just like any variable in any valid
+Python expression.
+
+The following custom functions are available for use in expressions:
+
+* `parse_ensemble_code(ensemble_code)`: Parse the argument as an ensemble code (`r<m>i<n>p<l>`) and return
+  a dict containing the values of each component, appropriately named as follows:
+    ```
+    {
+        'realization': <m>,
+        'initialization_method': <n>,
+        'physics_version': <l>,
+    }
+    ```
+
+If an exception is raised during evaluation of an expression, the target attribute is not set,
+an error message is printed, and processing of the remaining unprocessed updates continues.
+
+If the attribute does not yet exist, it is created.
+
+```yaml
+global-or-variable-name:
+    name: =expression
+```
+
+or (to process in order)
+
+```yaml
+global-or-variable-name:
+    - name: =expression
+```
 
 ##### Rename attribute
 
