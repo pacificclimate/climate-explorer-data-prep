@@ -4,6 +4,7 @@ import logging
 import re
 import sys
 
+import numpy as np
 import six
 
 
@@ -44,9 +45,9 @@ def parse_ensemble_code(ensemble_code):
     match = re.match(r'r(\d+)i(\d+)p(\d+)', ensemble_code)
     if match:
         return {
-            'realization': int(match.group(1)),
-            'initialization_method': int(match.group(2)),
-            'physics_version': int(match.group(3)),
+            'realization': np.int32(match.group(1)),
+            'initialization_method': np.int32(match.group(2)),
+            'physics_version': np.int32(match.group(3)),
         }
     raise ValueError("Could not parse '{}' as an ensemble code"
                      .format(ensemble_code))
