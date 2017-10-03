@@ -1,0 +1,102 @@
+"""Module supporting update_metadata script"""
+
+import logging
+import re
+import sys
+
+import six
+
+
+rename_prefix = '<-'  # Or some other unlikely sequence of characters
+expression_prefix = '='
+
+
+formatter = logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s', "%Y-%m-%d %H:%M:%S")
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)  # overridden by -l when run as a script
+
+
+# Custom functions for use in the ``=expression`` syntax.
+
+# Decorator to catalogue custom functions
+custom_functions = {}
+def custom_function(fun):
+    custom_functions[fun.__name__] = fun
+    return fun
+
+
+@custom_function
+def normalize_experiment_id(experiment_id):
+    experiment_id = re.sub(r'historical', r'historical', experiment_id,
+                           flags=re.IGNORECASE)
+    experiment_id = re.sub(r'rcp(\d)\.?(\d)', r'rcp\1\2', experiment_id,
+                           flags=re.IGNORECASE)
+    return experiment_id
+
+
+@custom_function
+def parse_ensemble_code(ensemble_code):
+    match = re.match(r'r(\d+)i(\d+)p(\d+)', ensemble_code)
+    if match:
+        return {
+            'realization': int(match.group(1)),
+            'initialization_method': int(match.group(2)),
+            'physics_version': int(match.group(3)),
+        }
+    raise ValueError("Could not parse '{}' as an ensemble code"
+                     .format(ensemble_code))
+
+
+def modify_attribute(target, name, value):
+    # Delete
+    if value is None:
+        logger.info("\tDeleting attribute '{}'".format(name))
+        if hasattr(target, name):
+            delattr(target, name)
+        return
+
+    # Rename
+    if (isinstance(value, six.string_types)
+          and value.startswith(rename_prefix)):
+        old_name = value[len(rename_prefix):]
+        logger.info("\tRenaming attribute '{}' to '{}'".format(old_name, name))
+        if hasattr(target, old_name):
+            setattr(target, name, getattr(target, old_name))
+            delattr(target, old_name)
+        return
+
+    # Expression evaluation
+    if (isinstance(value, six.string_types)
+          and value.startswith(expression_prefix)):
+        logger.info("\tSetting attribute '{}' to expression value".format(name))
+        try:
+            expression = value[len(expression_prefix):]
+            ncattrs = {name: getattr(target, name) for name in target.ncattrs()}
+            result = eval(expression, custom_functions, ncattrs)
+            setattr(target, name, result)
+        except Exception:
+            logger.error('\t\tException during evaluation of expression:',
+                         sys.exc_info()[0])
+        return
+
+    # Set
+    logger.info("\tSetting attribute '{}'".format(name))
+    setattr(target, name, value)
+
+
+def process(target, item):
+    if isinstance(item, tuple) and len(item) == 2:
+        modify_attribute(target, *item)
+    elif isinstance(item, list):
+        for element in item:
+            process(target, element)
+    elif isinstance(item, dict):
+        for element in item.items():
+            process(target, element)
+    else:
+        logger.error('Cannot process {}', item)
