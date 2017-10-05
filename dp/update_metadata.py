@@ -70,23 +70,23 @@ def rename_attribute(target, name, value):
 def set_attribute_from_expression(target, name, value):
     expression = value[len(expression_prefix):]
     try:
-        ncattrs = {name: getattr(target, name) for name in target.ncattrs()}
+        ncattrs = {key: getattr(target, key) for key in target.ncattrs()}
         result = eval(expression, custom_functions, ncattrs)
         setattr(target, name, result)
-        logger.info("\t'{}': Set to value of expression '{}'"
-                    .format(name, expression))
+        logger.info("\t'{}': Set to value of expression {}"
+                    .format(name, repr(expression)))
         logger.debug("\t\t= {}".format(repr(result)))
     except Exception:
         logger.error(
             "\t'{}': Exception during evaluation of expression '{}':\n\t{}"
-            .format(target, name, sys.exc_info()[0])
+            .format(name, expression, sys.exc_info()[0])
         )
 
 
 def set_attribute(target, name, value):
     setattr(target, name, value)
-    logger.info("\t'{}': Set")
-    logger.debug("\t\tto: {}".format(repr(value)))
+    logger.info("\t'{}': Set".format(name))
+    logger.debug("\t\t= {}".format(repr(value)))
 
 
 def modify_attribute(target, name, value):
