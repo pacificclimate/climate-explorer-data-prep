@@ -73,8 +73,9 @@ def set_attribute_from_expression(target, name, value):
         ncattrs = {name: getattr(target, name) for name in target.ncattrs()}
         result = eval(expression, custom_functions, ncattrs)
         setattr(target, name, result)
-        logger.info("\t'{}': Set to value of expression '{}' = {}"
-                    .format(name, expression, result))
+        logger.info("\t'{}': Set to value of expression '{}'"
+                    .format(name, expression))
+        logger.debug("\t\t= {}".format(repr(result)))
     except Exception:
         logger.error(
             "\t'{}': Exception during evaluation of expression '{}':\n\t{}"
@@ -84,7 +85,8 @@ def set_attribute_from_expression(target, name, value):
 
 def set_attribute(target, name, value):
     setattr(target, name, value)
-    logger.info("\t'{}': Set to '{}'".format(name, value))
+    logger.info("\t'{}': Set")
+    logger.debug("\t\tto: {}".format(repr(value)))
 
 
 def modify_attribute(target, name, value):
