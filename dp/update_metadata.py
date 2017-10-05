@@ -54,35 +54,37 @@ def parse_ensemble_code(ensemble_code):
 
 
 def delete_attribute(target, name):
-    logger.info("\tDeleting attribute '{}'".format(name))
     if hasattr(target, name):
         delattr(target, name)
+        logger.info("\t'{}': Deleted".format(name))
 
 
 def rename_attribute(target, name, value):
     old_name = value[len(rename_prefix):]
-    logger.info("\tRenaming attribute '{}' to '{}'".format(old_name, name))
     if hasattr(target, old_name):
         setattr(target, name, getattr(target, old_name))
         delattr(target, old_name)
+        logger.info("\t'{}': Renamed from '{}'".format(name, old_name))
 
 
 def set_attribute_from_expression(target, name, value):
     expression = value[len(expression_prefix):]
-    logger.info("\tSetting attribute '{}' to value of expression '{}'"
-                .format(name, expression))
     try:
         ncattrs = {name: getattr(target, name) for name in target.ncattrs()}
         result = eval(expression, custom_functions, ncattrs)
         setattr(target, name, result)
+        logger.info("\t'{}': Set to value of expression '{}' = {}"
+                    .format(name, expression, result))
     except Exception:
-        logger.error('\t\tException during evaluation of expression:',
-                     sys.exc_info()[0])
+        logger.error(
+            "\t'{}': Exception during evaluation of expression '{}':\n\t{}"
+            .format(target, name, sys.exc_info()[0])
+        )
 
 
 def set_attribute(target, name, value):
-    logger.info("\tSetting attribute '{}'".format(name))
     setattr(target, name, value)
+    logger.info("\t'{}': Set to '{}'".format(name, value))
 
 
 def modify_attribute(target, name, value):
