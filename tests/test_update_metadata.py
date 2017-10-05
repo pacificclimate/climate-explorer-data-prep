@@ -15,6 +15,7 @@ from dp.update_metadata import normalize_experiment_id, parse_ensemble_code
     ('rcp8.5', 'rcp85'),
     ('RCP8.5', 'rcp85'),
     ('Historical, RCP8.5', 'historical, rcp85'),
+    ('one,two ,three,   four  ,  five, six', 'one, two, three, four, five, six'),
 ])
 def test_normalize_experiment_id(input_, expected):
     assert normalize_experiment_id(input_) == expected

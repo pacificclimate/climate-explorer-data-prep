@@ -37,6 +37,7 @@ def normalize_experiment_id(experiment_id):
                            flags=re.IGNORECASE)
     experiment_id = re.sub(r'rcp(\d)\.?(\d)', r'rcp\1\2', experiment_id,
                            flags=re.IGNORECASE)
+    experiment_id = ', '.join(re.split(r'\s*,\s*', experiment_id))
     return experiment_id
 
 
