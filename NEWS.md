@@ -1,5 +1,12 @@
 # News / Release Notes
 
+## 0.4.1
+
+*2017 Oct 06*
+
+* Improve logging in `update_metadata`.
+* Add separator normalization to `update_metadata` custom function `normalize_experiment_id`.
+
 ## 0.4.0
 
 *2017 Oct 03*
