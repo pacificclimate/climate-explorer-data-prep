@@ -165,7 +165,7 @@ def process_updates(dataset, updates):
             target = dataset.variables[target_name]
             logger.info("Attributes of variable '{}':".format(target_name))
             if target_name != target_key:
-                logger.debug("\t\tfrom expression '{}'".format(target_key))
+                logger.debug('\t\tfrom expression {}'.format(repr(target_key)))
 
         apply_update_set(dataset, target, updates[target_key])
 
