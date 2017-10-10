@@ -3,7 +3,7 @@
 import pytest
 
 from dp.update_metadata import normalize_experiment_id, parse_ensemble_code, \
-    set_attribute_from_expression
+    set_attribute_from_expression, process_updates
 
 
 # Custom functions
@@ -61,10 +61,40 @@ class TestSetAttributeFromExpression(object):
         ('str(list(dimensions.keys()))', "['time']"),
         ('str(list(variables.keys()))', "['var']"),
         ('str(dependent_varnames())', "['var']"),
+        ('variables[dependent_varnames()[0]].baz', 'qux'),
+        ('dependent_varname', 'var'),
     ])
     def test_context(self, fake_dataset, expression, expected):
         target = fake_dataset
         set_attribute_from_expression(
-            fake_dataset, target, 'test', '={}'.format(expression)
+            fake_dataset, target, 'test', expression
         )
         assert target.test == expected
+
+
+# process_updates
+
+@pytest.mark.parametrize('fake_dataset', [
+    {
+        'dimensions': [('time', 10)],
+        'variables': [
+            {'name': 'var', 'dimensions': ('time',)}
+        ]
+    }
+], indirect=['fake_dataset'])
+@pytest.mark.parametrize('target_key, target_name', [
+    ('global', 'global'),
+    ('var', 'var'),
+    ("='va'+'r'", 'var'),
+    ("=dependent_varname", 'var'),
+])
+def test_process_updates(fake_dataset, target_key, target_name):
+    updates = {
+        target_key: {'yow': '=1+2'}
+    }
+    process_updates(fake_dataset, updates)
+    if target_name == 'global':
+        target = fake_dataset
+    else:
+        target = fake_dataset.variables[target_name]
+    assert target.yow == 3

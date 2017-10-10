@@ -70,27 +70,42 @@ def rename_attribute(target, name, value):
         logger.info("\t'{}': Renamed from '{}'".format(name, old_name))
 
 
-def set_attribute_from_expression(dataset, target, name, value):
-    expression = value[len(expression_prefix):]
+def is_expression(value):
+    return (isinstance(value, six.string_types)
+        and value.startswith(expression_prefix))
+
+
+def evaluate_expression(dataset, expression):
+    """
+    Evaluate an expression in a context determined by the content of
+    the dataset.
+
+    The context contains selected items copied from ``dataset``. It contains
+    all global attributes and selected CFDataset properties/methods.
+    """
+    context = {}
+    context.update({
+        key: getattr(dataset, key) for key in dataset.ncattrs()
+    })
+    context.update({
+        key: getattr(dataset, key)
+        for key in '''
+            filepath
+            dimensions
+            variables
+            dependent_varnames
+        '''.split()
+    })
+    context.update({
+        'dependent_varname':  dataset.dependent_varnames()[0]
+    })
+
+    return eval(expression, custom_functions, context)
+
+
+def set_attribute_from_expression(dataset, target, name, expression):
     try:
-        # ``context`` is part of the evaluation context for the expression.
-        # It contains selected items copied from ``dataset``, which is an
-        # ``nchelpers.CFDataset`` object representing the file. It contains
-        # all global attributes and selected CFDataset properties/methods.
-        context = {}
-        context.update({
-            key: getattr(dataset, key) for key in dataset.ncattrs()
-        })
-        context.update({
-            key: getattr(dataset, key)
-            for key in '''
-                filepath
-                dimensions
-                variables
-                dependent_varnames
-            '''.split()
-        })
-        result = eval(expression, custom_functions, context)
+        result = evaluate_expression(dataset, expression)
         setattr(target, name, result)
         logger.info("\t'{}': Set to value of expression {}"
                     .format(name, repr(expression)))
@@ -116,24 +131,43 @@ def modify_attribute(dataset, target, name, value):
           and value.startswith(rename_prefix)):
         return rename_attribute(target, name, value)
 
-    if (isinstance(value, six.string_types)
-          and value.startswith(expression_prefix)):
-        return set_attribute_from_expression(dataset, target, name, value)
+    if is_expression(value):
+        expression = value[len(expression_prefix):]
+        return set_attribute_from_expression(dataset, target, name, expression)
 
     return set_attribute(target, name, value)
 
 
-def process_updates(dataset, target,updates):
-    if isinstance(updates, tuple) and len(updates) == 2:
-        modify_attribute(dataset, target,*updates)
-    elif isinstance(updates, list):
-        for element in updates:
-            process_updates(dataset, target,element)
-    elif isinstance(updates, dict):
-        for element in updates.items():
-            process_updates(dataset, target,element)
+def apply_update_set(dataset, target, update_set):
+    if isinstance(update_set, tuple) and len(update_set) == 2:
+        modify_attribute(dataset, target, *update_set)
+    elif isinstance(update_set, list):
+        for element in update_set:
+            apply_update_set(dataset, target, element)
+    elif isinstance(update_set, dict):
+        for element in update_set.items():
+            apply_update_set(dataset, target, element)
     else:
-        logger.error('Cannot process {}', updates)
+        logger.error('Cannot process {}', update_set)
+
+
+def process_updates(dataset, updates):
+    for target_key in updates:
+        if is_expression(target_key):
+            expression = target_key[len(expression_prefix):]
+            target_name = evaluate_expression(dataset, expression)
+        else:
+            target_name = target_key
+        if target_name == 'global':
+            target = dataset
+            logger.info("Global attributes:")
+        else:
+            target = dataset.variables[target_name]
+            logger.info("Attributes of variable '{}':".format(target_name))
+            if target_name != target_key:
+                logger.debug('\t\tfrom expression {}'.format(repr(target_key)))
+
+        apply_update_set(dataset, target, updates[target_key])
 
 
 def main(args):
@@ -142,12 +176,4 @@ def main(args):
 
     logger.info('Processing file: {}'.format(args.ncfile))
     with CFDataset(args.ncfile, mode='r+') as dataset:
-        for target_name in updates:
-            if target_name == 'global':
-                target = dataset
-                logger.info("Global attributes:")
-            else:
-                target = dataset.variables[target_name]
-                logger.info("Attributes of variable '{}':".format(target_name))
-
-            process_updates(dataset, target, updates[target_name])
+        process_updates(dataset, updates)
