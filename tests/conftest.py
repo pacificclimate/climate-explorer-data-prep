@@ -11,3 +11,33 @@ def tiny_dataset(request):
 @fixture(scope='function')
 def outdir(tmpdir_factory):
     return str(tmpdir_factory.mktemp('outdir'))
+
+
+@fixture
+def fake_dataset(request, outdir):
+    with CFDataset('test.nc', mode='w') as dataset:
+        try:
+            dataset.setncatts(request.param['attributes'])
+        except KeyError:
+            pass
+
+        try:
+            dimensions = request.param['dimensions']
+        except KeyError:
+            dimensions = []
+        for dim_name, size in dimensions:
+            dataset.createDimension(dim_name, size)
+
+        try:
+            variables = request.param['variables']
+        except KeyError:
+            variables = []
+        for spec in variables:
+            variable = dataset.createVariable(
+                spec['name'], 'f', spec['dimensions'])
+            try:
+                variable.setncatts(spec['attributes'])
+            except KeyError:
+                pass
+
+        yield dataset
