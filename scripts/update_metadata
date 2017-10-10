@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 import logging
 
 from dp.argparse_helpers import log_level_choices
-from dp.update_metadata import logger, process
+from dp.update_metadata import logger
 
 
 if __name__ == '__main__':

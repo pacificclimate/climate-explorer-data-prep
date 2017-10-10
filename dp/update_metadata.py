@@ -7,7 +7,7 @@ import sys
 import six
 import yaml
 import numpy as np
-from netCDF4 import Dataset
+from nchelpers import Dataset
 
 
 rename_prefix = '<-'  # Or some other unlikely sequence of characters
@@ -107,24 +107,24 @@ def modify_attribute(target, name, value):
     return set_attribute(target, name, value)
 
 
-def process(target, item):
-    if isinstance(item, tuple) and len(item) == 2:
-        modify_attribute(target, *item)
-    elif isinstance(item, list):
-        for element in item:
-            process(target, element)
-    elif isinstance(item, dict):
-        for element in item.items():
-            process(target, element)
+def process_updates(target, updates):
+    if isinstance(updates, tuple) and len(updates) == 2:
+        modify_attribute(target, *updates)
+    elif isinstance(updates, list):
+        for element in updates:
+            process_updates(target, element)
+    elif isinstance(updates, dict):
+        for element in updates.items():
+            process_updates(target, element)
     else:
-        logger.error('Cannot process {}', item)
+        logger.error('Cannot process {}', updates)
 
 
 def main(args):
     with open(args.updates) as ud:
         updates = yaml.safe_load(ud)
 
-    logger.info('NetCDF file: {}'.format(args.ncfile))
+    logger.info('Processing file: {}'.format(args.ncfile))
     with Dataset(args.ncfile, mode='r+') as nc:
         for target_name in updates:
             if target_name == 'global':
@@ -134,4 +134,4 @@ def main(args):
                 target = nc.variables[target_name]
                 logger.info("Attributes of variable '{}':".format(target_name))
 
-            process(target, updates[target_name])
+            process_updates(target, updates[target_name])
