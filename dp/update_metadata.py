@@ -4,8 +4,10 @@ import logging
 import re
 import sys
 
-import numpy as np
 import six
+import yaml
+import numpy as np
+from netCDF4 import Dataset
 
 
 rename_prefix = '<-'  # Or some other unlikely sequence of characters
@@ -116,3 +118,20 @@ def process(target, item):
             process(target, element)
     else:
         logger.error('Cannot process {}', item)
+
+
+def main(args):
+    with open(args.updates) as ud:
+        updates = yaml.safe_load(ud)
+
+    logger.info('NetCDF file: {}'.format(args.ncfile))
+    with Dataset(args.ncfile, mode='r+') as nc:
+        for target_name in updates:
+            if target_name == 'global':
+                target = nc
+                logger.info("Global attributes:")
+            else:
+                target = nc.variables[target_name]
+                logger.info("Attributes of variable '{}':".format(target_name))
+
+            process(target, updates[target_name])
