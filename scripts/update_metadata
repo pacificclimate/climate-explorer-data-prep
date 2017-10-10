@@ -8,28 +8,8 @@ See README for details of update specification file (YAML format).
 from argparse import ArgumentParser
 import logging
 
-from netCDF4 import Dataset
-import yaml
-
 from dp.argparse_helpers import log_level_choices
-from dp.update_metadata import logger, process
-
-
-def main(args):
-    with open(args.updates) as ud:
-        updates = yaml.safe_load(ud)
-
-    logger.info('NetCDF file: {}'.format(args.ncfile))
-    with Dataset(args.ncfile, mode='r+') as nc:
-        for target_name in updates:
-            if target_name == 'global':
-                target = nc
-                logger.info("Global attributes:")
-            else:
-                target = nc.variables[target_name]
-                logger.info("Attributes of variable '{}':".format(target_name))
-
-            process(target, updates[target_name])
+from dp.update_metadata import logger
 
 
 if __name__ == '__main__':

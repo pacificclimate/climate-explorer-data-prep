@@ -4,8 +4,10 @@ import logging
 import re
 import sys
 
-import numpy as np
 import six
+import yaml
+import numpy as np
+from nchelpers import CFDataset
 
 
 rename_prefix = '<-'  # Or some other unlikely sequence of characters
@@ -68,11 +70,27 @@ def rename_attribute(target, name, value):
         logger.info("\t'{}': Renamed from '{}'".format(name, old_name))
 
 
-def set_attribute_from_expression(target, name, value):
+def set_attribute_from_expression(dataset, target, name, value):
     expression = value[len(expression_prefix):]
     try:
-        ncattrs = {key: getattr(target, key) for key in target.ncattrs()}
-        result = eval(expression, custom_functions, ncattrs)
+        # ``context`` is part of the evaluation context for the expression.
+        # It contains selected items copied from ``dataset``, which is an
+        # ``nchelpers.CFDataset`` object representing the file. It contains
+        # all global attributes and selected CFDataset properties/methods.
+        context = {}
+        context.update({
+            key: getattr(dataset, key) for key in dataset.ncattrs()
+        })
+        context.update({
+            key: getattr(dataset, key)
+            for key in '''
+                filepath
+                dimensions
+                variables
+                dependent_varnames
+            '''.split()
+        })
+        result = eval(expression, custom_functions, context)
         setattr(target, name, result)
         logger.info("\t'{}': Set to value of expression {}"
                     .format(name, repr(expression)))
@@ -90,7 +108,7 @@ def set_attribute(target, name, value):
     logger.debug("\t\t= {}".format(repr(value)))
 
 
-def modify_attribute(target, name, value):
+def modify_attribute(dataset, target, name, value):
     if value is None:
         return delete_attribute(target, name)
 
@@ -100,19 +118,36 @@ def modify_attribute(target, name, value):
 
     if (isinstance(value, six.string_types)
           and value.startswith(expression_prefix)):
-        return set_attribute_from_expression(target, name, value)
+        return set_attribute_from_expression(dataset, target, name, value)
 
     return set_attribute(target, name, value)
 
 
-def process(target, item):
-    if isinstance(item, tuple) and len(item) == 2:
-        modify_attribute(target, *item)
-    elif isinstance(item, list):
-        for element in item:
-            process(target, element)
-    elif isinstance(item, dict):
-        for element in item.items():
-            process(target, element)
+def process_updates(dataset, target,updates):
+    if isinstance(updates, tuple) and len(updates) == 2:
+        modify_attribute(dataset, target,*updates)
+    elif isinstance(updates, list):
+        for element in updates:
+            process_updates(dataset, target,element)
+    elif isinstance(updates, dict):
+        for element in updates.items():
+            process_updates(dataset, target,element)
     else:
-        logger.error('Cannot process {}', item)
+        logger.error('Cannot process {}', updates)
+
+
+def main(args):
+    with open(args.updates) as ud:
+        updates = yaml.safe_load(ud)
+
+    logger.info('Processing file: {}'.format(args.ncfile))
+    with CFDataset(args.ncfile, mode='r+') as dataset:
+        for target_name in updates:
+            if target_name == 'global':
+                target = dataset
+                logger.info("Global attributes:")
+            else:
+                target = dataset.variables[target_name]
+                logger.info("Attributes of variable '{}':".format(target_name))
+
+            process_updates(dataset, target, updates[target_name])
