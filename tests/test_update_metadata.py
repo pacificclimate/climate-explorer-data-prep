@@ -82,17 +82,19 @@ class TestSetAttributeFromExpression(object):
         ]
     }
 ], indirect=['fake_dataset'])
-@pytest.mark.parametrize('updates, target_name, attr, value', [
-    ({'global': {'other': 'whatnot'}}, 'global', 'other', 'whatnot'),
-    ({'var': {'other': 'whatnot'}}, 'var', 'other', 'whatnot'),
-    ({"='va'+'r'": {'other': 'whatnot'}}, 'var', 'other', 'whatnot'),
-    ({"=dependent_varname": {'other': 'whatnot'}},
-     'var', 'other', 'whatnot'),
+@pytest.mark.parametrize('target_key, target_name', [
+    ('global', 'global'),
+    ('var', 'var'),
+    ("='va'+'r'", 'var'),
+    ("=dependent_varname", 'var'),
 ])
-def test_process_updates(fake_dataset, updates, target_name, attr, value):
+def test_process_updates(fake_dataset, target_key, target_name):
+    updates = {
+        target_key: {'yow': '=1+2'}
+    }
     process_updates(fake_dataset, updates)
     if target_name == 'global':
         target = fake_dataset
     else:
         target = fake_dataset.variables[target_name]
-    assert getattr(target, attr) == value
+    assert target.yow == 3
