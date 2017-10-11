@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 0.5.2
+
+*2017 Oct 11*
+
+* Fix absent data in source distribution.
+
 ## 0.5.1
 
 *2017 Oct 11*
