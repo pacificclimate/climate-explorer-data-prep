@@ -29,7 +29,8 @@ logger.setLevel(logging.DEBUG)  # overridden by -l when run as a script
 # Load data files for later use
 
 def load_variable_info():
-    with open(resource_filename('dp', 'variable information.csv')) as file:
+    filepath = resource_filename(__name__, 'data/variable information.csv')
+    with open(filepath) as file:
         reader = csv.DictReader(file)
         return {row['standard_name']: row for row in reader}
 

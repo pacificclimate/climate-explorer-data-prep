@@ -21,7 +21,7 @@ setup(
     packages=['dp'],
     package_data = {
         'dp': [
-            'dp/variable information.csv',
+            'data/*',
             'tests/data/*.nc'
         ]
     },
