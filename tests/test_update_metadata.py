@@ -1,10 +1,55 @@
 # TODO: More testing. We're in a hurry. Have tested manually.
-
 import pytest
 
-from dp.update_metadata import normalize_experiment_id, parse_ensemble_code, \
-    set_attribute_from_expression, process_updates
+from dp.update_metadata import \
+    variable_info, \
+    long_name_for_var, cell_methods_for_var, \
+    normalize_experiment_id, \
+    parse_ensemble_code, \
+    set_attribute_from_expression, \
+    process_updates
 
+
+# Data loading
+
+def test_variable_info():
+    assert all(
+        key in variable_info for key in '''
+            altcddETCCDI
+            altcsdiETCCDI
+            altcwdETCCDI
+            altwsdiETCCDI
+            cddETCCDI
+            csdiETCCDI
+            cwdETCCDI
+            dtrETCCDI
+            fdETCCDI
+            gslETCCDI
+            idETCCDI
+            prcptotETCCDI
+            r10mmETCCDI
+            r1mmETCCDI
+            r20mmETCCDI
+            r95pETCCDI
+            r99pETCCDI
+            rx1dayETCCDI
+            rx1dayETCCDI
+            rx5dayETCCDI
+            rx5dayETCCDI
+            sdiiETCCDI
+            suETCCDI
+            tn10pETCCDI
+            tn90pETCCDI
+            tnnETCCDI
+            tnxETCCDI
+            trETCCDI
+            tx10pETCCDI
+            tx90pETCCDI
+            txnETCCDI
+            txxETCCDI
+            wsdiETCCDI
+        '''.split()
+    )
 
 # Custom functions
 
@@ -33,6 +78,16 @@ def test_parse_ensemble_code(input_, expected):
     assert parse_ensemble_code(input_) == expected
 
 
+@pytest.mark.parametrize('func, arg, result', [
+    (cell_methods_for_var,
+     'tnnETCCDI', 'time: minimum within days time: minimum over months'),
+    (long_name_for_var,
+     'tnnETCCDI', 'Monthly Minimum of Daily Minimum Temperature'),
+])
+def test_variable_info_functions(func, arg, result):
+    assert func(arg) == result
+
+
 # Set from expression
 
 @pytest.mark.parametrize('fake_dataset', [
@@ -57,7 +112,7 @@ class TestSetAttributeFromExpression(object):
     @pytest.mark.parametrize('expression, expected', [
         ('1+2', 3),
         ('foo', 'bar'),
-        ('filepath()', 'test.nc'),
+        ('filepath()[-7:]', 'test.nc'),
         ('str(list(dimensions.keys()))', "['time']"),
         ('str(list(variables.keys()))', "['var']"),
         ('str(dependent_varnames())', "['var']"),

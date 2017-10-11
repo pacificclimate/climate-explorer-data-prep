@@ -14,8 +14,9 @@ def outdir(tmpdir_factory):
 
 
 @fixture
-def fake_dataset(request, outdir):
-    with CFDataset('test.nc', mode='w') as dataset:
+def fake_dataset(request, tmpdir_factory):
+    fn = tmpdir_factory.mktemp('testdata').join('test.nc')
+    with CFDataset(fn, mode='w') as dataset:
         try:
             dataset.setncatts(request.param['attributes'])
         except KeyError:

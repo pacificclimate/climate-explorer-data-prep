@@ -3,6 +3,8 @@
 import logging
 import re
 import sys
+import csv
+from pkg_resources import resource_filename
 
 import six
 import yaml
@@ -23,6 +25,16 @@ logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # overridden by -l when run as a script
 
+
+# Load data files for later use
+
+def load_variable_info():
+    filepath = resource_filename(__name__, 'data/variable information.csv')
+    with open(filepath) as file:
+        reader = csv.DictReader(file)
+        return {row['standard_name']: row for row in reader}
+
+variable_info = load_variable_info()
 
 # Custom functions for use in the ``=expression`` syntax.
 
@@ -55,6 +67,25 @@ def parse_ensemble_code(ensemble_code):
     raise ValueError("Could not parse '{}' as an ensemble code"
                      .format(ensemble_code))
 
+
+def info_for_var(var_name, item):
+    try:
+        return variable_info[var_name][item]
+    except KeyError:
+        raise ValueError("'{}' is not a known variable name")
+
+
+@custom_function
+def long_name_for_var(var_name):
+    return info_for_var(var_name, 'long_name')
+
+
+@custom_function
+def cell_methods_for_var(var_name):
+    return info_for_var(var_name, 'cell_methods')
+
+
+# Functions for modifying attributes
 
 def delete_attribute(target, name):
     if hasattr(target, name):
