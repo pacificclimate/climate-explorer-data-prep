@@ -1,5 +1,18 @@
 # News / Release Notes
 
+## 0.5.0
+
+*2017 Oct 11*
+
+* ``update_metadata``: Enhancements largely in support of 
+[correcting attributes of CLIMDEX variables](https://github.com/pacificclimate/climate-explorer-data-prep/issues/31):
+
+  * Add access to variables
+  * Add access to dependent variable names
+  * Add expression evaluation for keys
+  * Add custom functions returning ``cell_methods`` and ``long_name`` for variable ``standard_name``
+  for CLIMDEX variables
+
 ## 0.4.1
 
 *2017 Oct 06*
