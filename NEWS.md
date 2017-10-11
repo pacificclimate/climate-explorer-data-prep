@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 0.5.1
+
+*2017 Oct 11*
+
+* Fix minor error in ``update_metadata`` script.
+
 ## 0.5.0
 
 *2017 Oct 11*
