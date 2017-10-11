@@ -1,0 +1,34 @@
+standard_name,long_name,cell_methods,cell_methods_std
+altcddETCCDI,Maximum Number of Consecutive Days Per Year with Less Than 1mm of Precipitation,unspecified,0
+altcsdiETCCDI,Cold Spell Duration Index Spanning Years,unspecified,0
+altcwdETCCDI,Maximum Number of Consecutive Days Per Year with At Least 1mm of Precipitation,unspecified,0
+altwsdiETCCDI,Warm Spell Duration Index Spanning Years,unspecified,0
+cddETCCDI,Maximum Number of Consecutive Days with Less Than 1mm of Precipitation,unspecified,0
+csdiETCCDI,Cold Spell Duration Index,unspecified,0
+cwdETCCDI,Maximum Number of Consecutive Days with At Least 1mm of Precipitation,unspecified,0
+dtrETCCDI,Mean Diurnal Temperature Range,unspecified,0
+fdETCCDI,Number of Frost Days,time: minimum within days time: count within years where < 0 C,0
+gslETCCDI,Growing Season Length,unspecified,0
+idETCCDI,Number of Icing Days,time: maximum within days time: count within years where < 0 C,0
+prcptotETCCDI,Annual Total Precipitation in Wet Days,unspecified,0
+r10mmETCCDI,Annual Count of Days with At Least 10mm of Precipitation,time: sum within days time: count within years where > 10 mm,0
+r1mmETCCDI,Annual Count of Days with At Least 1mm of Precipitation,time: sum within days time: count within years where > 1 mm,0
+r20mmETCCDI,Annual Count of Days with At Least 20mm of Precipitation,time: sum within days time: count within years where > 20 mm,0
+r95pETCCDI,Annual Total Precipitation when Daily Precipitation Exceeds the 95th Percentile of Wet Day Precipitation,unspecified,0
+r99pETCCDI,Annual Total Precipitation when Daily Precipitation Exceeds the 99th Percentile of Wet Day Precipitation,unspecified,0
+rx1dayETCCDI,Annual Maximum 1-day Precipitation,time: sum within days time: maximum within years,0
+rx1dayETCCDI,Monthly Maximum 1-day Precipitation,time: sum within days time: maximum within months,0
+rx5dayETCCDI,Annual Maximum Consecutive 5-day Precipitation,unspecified,0
+rx5dayETCCDI,Monthly Maximum Consecutive 5-day Precipitation,unspecified,0
+sdiiETCCDI,Simple Precipitation Intensity Index,unspecified,0
+suETCCDI,Number of Summer Days,time: maximum within days time: count within years where > 25 C,0
+tn10pETCCDI,Percentage of Days when Daily Minimum Temperature is Below the 10th Percentile,unspecified,0
+tn90pETCCDI,Percentage of Days when Daily Minimum Temperature is Above the 90th Percentile,unspecified,0
+tnnETCCDI,Monthly Minimum of Daily Minimum Temperature,time: minimum within days time: minimum over months,1
+tnxETCCDI,Monthly Maximum of Daily Minimum Temperature,time: minimum within days time: maximum over months,1
+trETCCDI,Number of Tropical Nights,time: minimum within days time: count within years where > 25 C,0
+tx10pETCCDI,Percentage of Days when Daily Maximum Temperature is Below the 10th Percentile,unspecified,0
+tx90pETCCDI,Percentage of Days when Daily Maximum Temperature is Above the 90th Percentile,unspecified,0
+txnETCCDI,Monthly Minimum of Daily Maximum Temperature,time: maximum within days time: minimum over months,1
+txxETCCDI,Monthly Maximum of Daily Maximum Temperature,time: maximum within days time: maximum over months,1
+wsdiETCCDI,Warm Spell Duration Index,unspecified,0

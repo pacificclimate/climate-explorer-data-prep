@@ -20,8 +20,12 @@ setup(
     '''.split(),
     packages=['dp'],
     package_data = {
-        'dp': ['tests/data/*.nc']
+        'dp': [
+            'dp/variable information.csv',
+            'tests/data/*.nc'
+        ]
     },
+    include_package_data=True,
     scripts='''
         scripts/generate_climos
         scripts/split_merged_climos
