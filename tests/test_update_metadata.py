@@ -1,5 +1,4 @@
 # TODO: More testing. We're in a hurry. Have tested manually.
-
 import pytest
 
 from dp.update_metadata import \
@@ -113,7 +112,7 @@ class TestSetAttributeFromExpression(object):
     @pytest.mark.parametrize('expression, expected', [
         ('1+2', 3),
         ('foo', 'bar'),
-        ('filepath()', 'test.nc'),
+        ('filepath()[-7:]', 'test.nc'),
         ('str(list(dimensions.keys()))', "['time']"),
         ('str(list(variables.keys()))', "['var']"),
         ('str(dependent_varnames())', "['var']"),

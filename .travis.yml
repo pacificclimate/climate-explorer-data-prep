@@ -1,7 +1,7 @@
-# We can't run tests for ``generate_climos`` because installing cdo in Travis is just too hard:
-# NetCDF support isn't built into the debian cdo pacakges. Once that is resolved (i.e., install the
-# NetCDF support before installing cdo), the commented-out lines can be uncommented to run those
-# tests too.
+# We can't run tests for ``generate_climos`` and ``split_merged_climos`` because installing cdo in Travis is
+# just too hard: NetCDF support isn't built into the debian cdo pacakges.
+# Once that is resolved (i.e., install the NetCDF support before installing cdo), the commented out code can be
+# uncommented and the full test suite can be run. For now we just run the non cdo dependent tests.
 language: python
 dist: trusty
 sudo: false
@@ -15,5 +15,4 @@ install:
   - pip install -I pytest>=3.0.0
   - pip install -i https://pypi.pacificclimate.org/simple/ .
 script:
-  - echo "wait for it"
   - py.test -v tests/test_units_helpers.py tests/test_update_metadata.py
