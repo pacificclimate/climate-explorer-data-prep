@@ -85,6 +85,18 @@ def cell_methods_for_var(var_name):
     return info_for_var(var_name, 'cell_methods')
 
 
+# Helper functions
+
+def is_rename(value):
+    return (isinstance(value, six.string_types)
+            and value.startswith(rename_prefix))
+
+
+def is_expression(value):
+    return (isinstance(value, six.string_types)
+            and value.startswith(expression_prefix))
+
+
 # Functions for modifying attributes
 
 def delete_attribute(target, name):
@@ -93,17 +105,11 @@ def delete_attribute(target, name):
         logger.info("\t'{}': Deleted".format(name))
 
 
-def rename_attribute(target, name, value):
-    old_name = value[len(rename_prefix):]
+def rename_attribute(target, name, old_name):
     if hasattr(target, old_name):
         setattr(target, name, getattr(target, old_name))
         delattr(target, old_name)
         logger.info("\t'{}': Renamed from '{}'".format(name, old_name))
-
-
-def is_expression(value):
-    return (isinstance(value, six.string_types)
-        and value.startswith(expression_prefix))
 
 
 def evaluate_expression(dataset, expression):
@@ -128,7 +134,7 @@ def evaluate_expression(dataset, expression):
         '''.split()
     })
     context.update({
-        'dependent_varname':  dataset.dependent_varnames()[0]
+        'dependent_varname':  sorted(dataset.dependent_varnames())[0]
     })
 
     return eval(expression, custom_functions, context)
@@ -141,11 +147,12 @@ def set_attribute_from_expression(dataset, target, name, expression):
         logger.info("\t'{}': Set to value of expression {}"
                     .format(name, repr(expression)))
         logger.debug("\t\t= {}".format(repr(result)))
-    except Exception:
+    except Exception as e:
         logger.error(
-            "\t'{}': Exception during evaluation of expression '{}':\n\t{}"
-            .format(name, expression, sys.exc_info()[0])
+            "\t'{}': Exception during evaluation of expression '{}'"
+            .format(name, expression)
         )
+        logger.error(e, exc_info=True)
 
 
 def set_attribute(target, name, value):
@@ -158,9 +165,9 @@ def modify_attribute(dataset, target, name, value):
     if value is None:
         return delete_attribute(target, name)
 
-    if (isinstance(value, six.string_types)
-          and value.startswith(rename_prefix)):
-        return rename_attribute(target, name, value)
+    if is_rename(value):
+        old_name = value[len(rename_prefix):]
+        return rename_attribute(target, name, old_name)
 
     if is_expression(value):
         expression = value[len(expression_prefix):]
@@ -169,36 +176,55 @@ def modify_attribute(dataset, target, name, value):
     return set_attribute(target, name, value)
 
 
-def apply_update_set(dataset, target, update_set):
-    if isinstance(update_set, tuple) and len(update_set) == 2:
-        modify_attribute(dataset, target, *update_set)
-    elif isinstance(update_set, list):
-        for element in update_set:
-            apply_update_set(dataset, target, element)
-    elif isinstance(update_set, dict):
-        for element in update_set.items():
-            apply_update_set(dataset, target, element)
+def apply_attribute_updates(dataset, target, attr_updates):
+    if isinstance(attr_updates, tuple) and len(attr_updates) == 2:
+        modify_attribute(dataset, target, *attr_updates)
+    elif isinstance(attr_updates, list):
+        for element in attr_updates:
+            apply_attribute_updates(dataset, target, element)
+    elif isinstance(attr_updates, dict):
+        for element in attr_updates.items():
+            apply_attribute_updates(dataset, target, element)
     else:
-        logger.error('Cannot process {}', update_set)
+        logger.error('Cannot process {}', attr_updates)
+
+
+# Modify variables
+
+def rename_variable(dataset, target_name, old_name):
+    if (old_name in dataset.variables
+        and target_name not in dataset.variables):
+        dataset.renameVariable(old_name, target_name)
+        logger.info("\tVariable '{}': renamed from '{}'"
+                    .format(target_name, old_name))
 
 
 def process_updates(dataset, updates):
-    for target_key in updates:
+    for target_key, update in updates.items():
+        # Evaluate key
         if is_expression(target_key):
             expression = target_key[len(expression_prefix):]
             target_name = evaluate_expression(dataset, expression)
         else:
             target_name = target_key
+
+        # Apply update
         if target_name == 'global':
             target = dataset
             logger.info("Global attributes:")
+            apply_attribute_updates(dataset, target, update)
         else:
-            target = dataset.variables[target_name]
-            logger.info("Attributes of variable '{}':".format(target_name))
-            if target_name != target_key:
-                logger.debug('\t\tfrom expression {}'.format(repr(target_key)))
+            if is_rename(update):
+                old_name = update[len(rename_prefix):]
+                rename_variable(dataset, target_name, old_name)
+            else:
+                target = dataset.variables[target_name]
+                logger.info("Attributes of variable '{}':".format(target_name))
+                if target_name != target_key:
+                    logger.debug(
+                        '\t\tfrom expression {}'.format(repr(target_key)))
+                apply_attribute_updates(dataset, target, update)
 
-        apply_update_set(dataset, target, updates[target_key])
 
 
 def main(args):
