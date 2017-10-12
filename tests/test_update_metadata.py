@@ -144,7 +144,7 @@ class TestProcessUpdates(object):
         ('global', 'global'),
         ('var1', 'var1'),
         ("='va'+'r1'", 'var1'),
-        ("=dependent_varname", 'var1'),
+        ("= dependent_varname", 'var1'),
     ])
     def test_process_updates_attributes(self, fake_dataset, target_key, target_name):
         updates = {
@@ -159,15 +159,18 @@ class TestProcessUpdates(object):
 
     @pytest.mark.parametrize('updates, new_name, old_name', [
         # Failing renames
-        ({'newvar': '<-foovar'}, 'newvar', 'foovar'),
-        ({'var1': '<-var2'}, 'var1', 'var2'),
-        ({'var1': '<-foovar'}, 'var1', 'foovar'),
+        ({'newvar': '<-foovar'}, 'newvar', 'foovar'),  # old not exist
+        ({'var1': '<- var2'}, 'var1', 'var2'),  # new already exists
+        ({'var1': '<- foovar'}, 'var1', 'foovar'), # new exist and old not exist
 
-        # Successful renames
+        # Successful renames - variations on spacing and use of expressions
+        # in both new and old names
         ({'newvar': '<-var1'}, 'newvar', 'var1'),
+        ({'newvar': '<-     var1'}, 'newvar', 'var1'),
         ({"='new'+'var'": '<-var1'}, 'newvar', 'var1'),
-        # ({'newvar': "<-='va'+'r1'"}, 'newvar', 'var1'),
-        # ({'newvar': '<-=dependent_varname'}, 'newvar', 'var1'),
+        ({'newvar': "<- = 'va'+'r1'"}, 'newvar', 'var1'),
+        ({'newvar': '<- = dependent_varname'}, 'newvar', 'var1'),
+        ({"= 'new'+'var'": '<-= dependent_varname'}, 'newvar', 'var1'),
     ])
     def test_process_updates_rename_var(
             self, fake_dataset, updates, new_name, old_name
@@ -178,10 +181,11 @@ class TestProcessUpdates(object):
         process_updates(fake_dataset, updates)
         if old_exists:
             if new_exists:
+                # Don't rename
                 assert old_name in fake_dataset.variables
                 assert new_name in fake_dataset.variables
             else:
-                # The succesful renaming case
+                # The successful renaming case
                 assert old_name not in fake_dataset.variables
                 assert new_name in fake_dataset.variables
         else:
