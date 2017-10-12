@@ -88,13 +88,12 @@ def cell_methods_for_var(var_name):
 
 # Helper functions
 
-def string_starts_with(prefix, string):
-    return (isinstance(string, six.string_types)
-            and string.startswith(prefix))
+def is_string_and_starts_with(prefix, thing):
+    return isinstance(thing, six.string_types) and thing.startswith(prefix)
 
 
-is_rename = partial(string_starts_with, rename_prefix)
-is_expression = partial(string_starts_with, expression_prefix)
+is_rename = partial(is_string_and_starts_with, rename_prefix)
+is_expression = partial(is_string_and_starts_with, expression_prefix)
 
 
 def strip_prefix(prefix, string):
