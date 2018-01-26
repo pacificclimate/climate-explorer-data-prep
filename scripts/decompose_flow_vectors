@@ -40,7 +40,7 @@ if not "lon" in variable.dimensions or not "lat" in variable.dimensions:
     source.close()
     sys.exit()
     
-if np.ma.max(variable[:]) > 9 or np.ma.max(variable[:].min < 1):
+if np.ma.max(variable[:]) > 9 or np.ma.min(variable[:]) < 1:
     print("Variable {} is not a valid flow routing".format(args.variable))
     source.close()
     sys.exit()
@@ -101,7 +101,7 @@ dest.variables[northvec][:] = north
 dest.setncatts(source.__dict__)
 
 #update history attribute, if present, to include this script
-if dest.history:
+if "history" in dest.ncattrs():
     dest.history ="{} {} {} {} {}\n".format(time.ctime(time.time()), parser.prog, args.source_file, args.dest_file, args.variable) + dest.history
 
 source.close()
