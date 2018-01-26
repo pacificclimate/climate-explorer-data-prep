@@ -15,4 +15,4 @@ install:
   - pip install -I pytest>=3.0.0
   - pip install -i https://pypi.pacificclimate.org/simple/ .
 script:
-  - py.test -v tests/test_units_helpers.py tests/test_update_metadata.py
+  - py.test -v tests/test_units_helpers.py tests/test_update_metadata.py tests/test_decompose_flow_vectors.py
