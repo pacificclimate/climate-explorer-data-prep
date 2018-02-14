@@ -1,6 +1,6 @@
 python-dateutil
 cdo
-nchelpers
+nchelpers==5.3.0
 pint
 PyYAML
 # for testing
