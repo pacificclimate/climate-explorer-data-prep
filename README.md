@@ -352,6 +352,32 @@ Global attributes:
 Attributes of variable named `temperature`:
 * set attribute `units` to (string) `degrees_C`
 
+### `decompose_flow_vectors`: create normalized unit vector fields from a VIC routing file
+
+#### Purpose:
+ncWMS can display vector fields as map rasters, if the vector data is arranged inside the netCDF file as two grids, one representing the eastward vectors at each grid location, the other representing northward vectors at each grid location. 
+
+VIC parametrization files encode flow direction using a number from 1 to 8. This script decomposes the flow direction vectors in a VIC parametrization file into northward and eastward vector arrays for ncWMS display.
+
+VIC routing directional vector values:
+```
+1 = North
+2 = Northeast
+3 = East
+4 = Southeast
+5 = South
+6 = Southwest
+7 = West
+8 = Northwest
+9 = Outlet of stream or river
+```
+
+#### Usage:
+`decompose_flow_vectors.py infile outfile variable`
+
+Writes to `outfile` a netCDF containing normalized vector arrays generated from `variable` in `infile`. Does not change `infile` or copy any other variables or axes to `outfile`.
+
+
 ## Indexing climatological output files
 
 Indexing is done using scripts in the [modelmeta](https://github.com/pacificclimate/modelmeta) package.
