@@ -133,23 +133,64 @@ class TestSetAttributeFromExpression(object):
     {
         'dimensions': [('time', 10)],
         'variables': [
-            {'name': 'var', 'dimensions': ('time',)}
+            {'name': 'var1', 'dimensions': ('time',)},
+            {'name': 'var2', 'dimensions': ('time',)},
         ]
     }
 ], indirect=['fake_dataset'])
-@pytest.mark.parametrize('target_key, target_name', [
-    ('global', 'global'),
-    ('var', 'var'),
-    ("='va'+'r'", 'var'),
-    ("=dependent_varname", 'var'),
-])
-def test_process_updates(fake_dataset, target_key, target_name):
-    updates = {
-        target_key: {'yow': '=1+2'}
-    }
-    process_updates(fake_dataset, updates)
-    if target_name == 'global':
-        target = fake_dataset
-    else:
-        target = fake_dataset.variables[target_name]
-    assert target.yow == 3
+class TestProcessUpdates(object):
+
+    @pytest.mark.parametrize('target_key, target_name', [
+        ('global', 'global'),
+        ('var1', 'var1'),
+        ("='va'+'r1'", 'var1'),
+        ("= dependent_varname", 'var1'),
+    ])
+    def test_process_updates_attributes(self, fake_dataset, target_key, target_name):
+        updates = {
+            target_key: {'yow': '=1+2'}
+        }
+        process_updates(fake_dataset, updates)
+        if target_name == 'global':
+            target = fake_dataset
+        else:
+            target = fake_dataset.variables[target_name]
+        assert target.yow == 3
+
+    @pytest.mark.parametrize('updates, new_name, old_name', [
+        # Failing renames
+        ({'newvar': '<-foovar'}, 'newvar', 'foovar'),  # old not exist
+        ({'var1': '<- var2'}, 'var1', 'var2'),  # new already exists
+        ({'var1': '<- foovar'}, 'var1', 'foovar'), # new exist and old not exist
+
+        # Successful renames - variations on spacing and use of expressions
+        # in both new and old names
+        ({'newvar': '<-var1'}, 'newvar', 'var1'),
+        ({'newvar': '<-     var1'}, 'newvar', 'var1'),
+        ({"='new'+'var'": '<-var1'}, 'newvar', 'var1'),
+        ({'newvar': "<- = 'va'+'r1'"}, 'newvar', 'var1'),
+        ({'newvar': '<- = dependent_varname'}, 'newvar', 'var1'),
+        ({"= 'new'+'var'": '<-= dependent_varname'}, 'newvar', 'var1'),
+    ])
+    def test_process_updates_rename_var(
+            self, fake_dataset, updates, new_name, old_name
+    ):
+        old_exists, new_exists = (
+            name in fake_dataset.variables for name in (old_name, new_name)
+        )
+        process_updates(fake_dataset, updates)
+        if old_exists:
+            if new_exists:
+                # Don't rename
+                assert old_name in fake_dataset.variables
+                assert new_name in fake_dataset.variables
+            else:
+                # The successful renaming case
+                assert old_name not in fake_dataset.variables
+                assert new_name in fake_dataset.variables
+        else:
+            assert old_name not in fake_dataset.variables
+            if new_exists:
+                assert new_name in fake_dataset.variables
+            else:
+                assert new_name not in fake_dataset.variables
