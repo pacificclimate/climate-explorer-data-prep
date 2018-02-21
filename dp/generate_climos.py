@@ -132,7 +132,7 @@ def create_climo_files(outdir, input_file, t_start, t_end,
         """
         ops_by_resolution = {
             'daily': ['ymonmean', 'yseasmean', 'timmean'],
-            'monthly': ['yseasmean', 'timmean'],
+            'monthly': ['ymonmean', 'yseasmean', 'timmean'],
             'yearly': ['timmean']
         }
         try:
