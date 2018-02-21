@@ -15,8 +15,8 @@
 
 cp $2 $TMPDIR/
 infile=$TMPDIR/$(basename $2)
-logfile=/storage/data/projects/comp_support/climate_exporer_data_prep/climatological_means/log_$1.txt
+logfile=/storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/log_$1.txt
 python generate_climos.py --split-vars -o $TMPDIR/output/ $infile >>$logfile 2>&1
-rsync $TMPDIR/output/*.nc /storage/data/projects/comp_support/climate_exporer_data_prep/climatological_means/
+rsync $TMPDIR/output/*.nc /storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/
 rm $infile
 
