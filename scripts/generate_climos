@@ -24,7 +24,8 @@ def main(args):
                         logger.info('{}: {}'.format(attr, getattr(input_file.metadata, attr)))
                     except Exception as e:
                         logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-                for attr in 'dependent_varnames time_resolution is_multi_year_mean'.split():
+                logger.info('dependent_varnames: {}'.format(input_file.dependent_varnames()))
+                for attr in 'time_resolution is_multi_year_mean'.split():
                     logger.info('{}: {}'.format(attr, getattr(input_file, attr)))
         sys.exit(0)
 
