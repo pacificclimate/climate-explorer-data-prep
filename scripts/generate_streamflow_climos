@@ -1,0 +1,69 @@
+#!python
+
+#Generates climatological means for streamflow files. 
+#PREPROCESSING:
+#    1. Copy input file to a provided temporary location
+#    2. Add "project" attribute, if necessary
+#    3. Populate "model_id", "experiment_id", and "run" from casestr if necessary
+#PROCESSING
+#    4. Generate climos using cdo-based generate_climos
+#POSTPROCESSING:
+#    5. Restore any text-based station variables (like station name) deleted by cdo
+#    6. Rename any dimensions renamed by cdo
+
+from argparse import ArgumentParser
+import logging
+import sys
+import shutil as sh
+
+from nchelpers import CFDataset
+from dp.argparse_helpers import strtobool, log_level_choices
+from dp.generate_climos import logger, create_climo_files
+from dp.streamflow_helpers import split_casestr, post_cdo_restore_dimension_names, post_cdo_restore_text_variables
+
+def main(args):
+    for filepath in args.filepaths:
+        logger.info('')
+        logger.info('Processing: {}'.format(filepath))
+        try:
+            #TODO: validate tempdir
+            tempsrc = args.tempdir + filepath.split('/')[-1]
+            sh.copy(filepath, tempsrc)
+            input_file = CFDataset(tempsrc, "r+")
+        except Exception as e:
+            logger.info('{}: {}'.format(e.__class__.__name__, e))
+        else:
+            if "casestr" in input_file.ncattrs() and "model_id" not in input_file.ncattrs():
+                split_casestr(input_file)
+            
+            if "project_id" not in input_file.ncattrs():
+                logger.info("Setting project to CMIP5")
+                input_file.project_id = "CMIP5"
+                
+            if "product" not in input_file.ncattrs():
+                logger.info("Setting product to hydrological model output")
+                input_file.product = "hydrological model output"
+        
+        post = CFDataset("cdoexp.nc", "r+")    
+        post_cdo_restore_dimension_names(input_file, post)
+        post_cdo_restore_text_variables(input_file, post)
+        post.close()
+        
+            #TODO: remove temp file!
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Create climatologies from CMIP5 data')
+    parser.add_argument('filepaths', nargs='*', help='Files to process')
+    parser.add_argument('-l', '--loglevel', help='Logging level',
+                        choices=log_level_choices, default='INFO')
+    parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true')
+    parser.add_argument('-g', '--convert-longitudes', type=strtobool, dest='convert_longitudes',
+                        help='Transform longitude range from [0, 360) to [-180, 180)')
+    parser.add_argument('-i', '--split-intervals', type=strtobool, dest='split_intervals',
+                        help='Generate a separate file for each climatological period')
+    parser.add_argument('-o', '--outdir', required=True, help='Output folder')
+    parser.add_argument('-t', '--tempdir', required=True, help='Temporary working folder')
+    parser.set_defaults(dry_run=False, convert_longitudes=True, split_vars=True, split_intervals=True)
+    args = parser.parse_args()
+    logger.setLevel(getattr(logging, args.loglevel))
+    main(args)
+

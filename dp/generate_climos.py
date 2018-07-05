@@ -83,6 +83,7 @@ def create_climo_files(outdir, input_file, t_start, t_end,
     output file name will be misleading.
 
     """
+    print("Starting create_climp_files")
     logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
 
     if input_file.is_multi_year_mean:
@@ -113,9 +114,11 @@ def create_climo_files(outdir, input_file, t_start, t_end,
         'rx5dayETCCDI', 'sdiiETCCDI', 'suETCCDI', 'thresholds', 'tn10pETCCDI',
         'tn90pETCCDI', 'tnnETCCDI', 'tnxETCCDI', 'trETCCDI', 'tx10pETCCDI',
         'tx90pETCCDI', 'txnETCCDI', 'txxETCCDI', 'wsdiETCCDI',
+        #Hydrological output variables
+        'streamflow'
     }
 
-    for variable in input_file.dependent_varnames:
+    for variable in input_file.dependent_varnames("time"):
         if variable not in supported_vars:
             raise Exception("Unsupported variable: cant't yet process {}".format(variable))
 
@@ -167,7 +170,7 @@ def create_climo_files(outdir, input_file, t_start, t_end,
         climo_means_files = [
             fp
             for climo_means_file in climo_means_files
-            for fp in split_on_variables(climo_means_file, input_file.dependent_varnames)
+            for fp in split_on_variables(climo_means_file, input_file.dependent_varnames("time"))
         ]
 
     # Move/copy the temporary files to their final output filepaths
@@ -272,7 +275,7 @@ def convert_pr_var_units(input_file, climo_means):
     """
     pr_attributes = {}  # will contain updates, if any, to pr variable attributes
 
-    if 'pr' in input_file.dependent_varnames:
+    if 'pr' in input_file.dependent_varnames("time"):
         pr_variable = input_file.variables['pr']
         pr_units = Unit.from_udunits_str(pr_variable.units)
         if pr_units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
