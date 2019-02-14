@@ -35,7 +35,7 @@ def test_existence(outdir, tiny_dataset):
 @mark.parametrize('tiny_dataset', datasets, indirect=['tiny_dataset'])
 def test_filenames(outdir, tiny_dataset):
     split_filepaths = split_merged_climos(tiny_dataset, outdir)
-    assert {basename_components(fp)[0] for fp in split_filepaths} == {'+'.join(sorted(tiny_dataset.dependent_varnames))}
+    assert {basename_components(fp)[0] for fp in split_filepaths} == {'+'.join(sorted(tiny_dataset.dependent_varnames()))}
     assert {basename_components(fp)[1] for fp in split_filepaths} == {'mClim', 'sClim', 'aClim'}
 
 
@@ -69,4 +69,4 @@ def test_dependent_variables(outdir, tiny_dataset):
     split_filepaths = split_merged_climos(tiny_dataset, outdir)
     for fp in split_filepaths:
         with CFDataset(fp) as cf:
-            assert tiny_dataset.dependent_varnames == cf.dependent_varnames
+            assert tiny_dataset.dependent_varnames() == cf.dependent_varnames()

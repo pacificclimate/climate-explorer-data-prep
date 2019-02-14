@@ -71,7 +71,7 @@ def test_existence(outdir, tiny_dataset, t_start, t_end, split_vars, split_inter
     """
     climo_files = create_climo_files(outdir, tiny_dataset, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
-    num_vars = len(tiny_dataset.dependent_varnames)
+    num_vars = len(tiny_dataset.dependent_varnames())
     num_files = 1
     num_intervals = 3  # TODO: determine this from the dataset
     if split_vars:
@@ -107,9 +107,9 @@ def test_filenames(outdir, tiny_dataset, t_start, t_end, split_vars, split_inter
     climo_files = create_climo_files(outdir, tiny_dataset, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
     if split_vars:
-        varnames = set(tiny_dataset.dependent_varnames)
+        varnames = set(tiny_dataset.dependent_varnames())
     else:
-        varnames = {'+'.join(sorted(tiny_dataset.dependent_varnames))}
+        varnames = {'+'.join(sorted(tiny_dataset.dependent_varnames()))}
     assert varnames == set(basename_components(fp)[0] for fp in climo_files)
     for fp in climo_files:
         frequency = basename_components(fp)[1]
@@ -184,13 +184,13 @@ def test_pr_units_conversion(outdir, tiny_dataset, t_start, t_end, split_vars, s
     """
     climo_files = create_climo_files(outdir, tiny_dataset, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
-    assert 'pr' in tiny_dataset.dependent_varnames
+    assert 'pr' in tiny_dataset.dependent_varnames()
     input_pr_var = tiny_dataset.variables['pr']
     assert Unit.from_udunits_str(input_pr_var.units) in [Unit('kg/m**2/s'), Unit('mm/s')]
     seconds_per_day = 86400
     for fp in climo_files:
         with CFDataset(fp) as cf:
-            if 'pr' in cf.dependent_varnames:
+            if 'pr' in cf.dependent_varnames():
                 output_pr_var = cf.variables['pr']
                 assert Unit.from_udunits_str(output_pr_var.units) in [Unit('kg/m**2/day'), Unit('mm/day')]
                 if hasattr(input_pr_var, 'scale_factor') or hasattr(input_pr_var, 'add_offset'):
@@ -225,12 +225,12 @@ def test_dependent_variables(outdir, tiny_dataset, t_start, t_end, split_vars, s
     dependent_varnames_in_cfs = set()
     for fp in climo_files:
         with CFDataset(fp) as cf:
-            dependent_varnames_in_cfs.update(cf.dependent_varnames)
+            dependent_varnames_in_cfs.update(cf.dependent_varnames())
             if split_vars:
                 # There should be one dependent variable from the input file
-                assert len(cf.dependent_varnames) == 1
+                assert len(cf.dependent_varnames()) == 1
     # All the input dependent variables should be covered by all the output files
-    assert dependent_varnames_in_cfs == set(tiny_dataset.dependent_varnames)
+    assert dependent_varnames_in_cfs == set(tiny_dataset.dependent_varnames())
 
 
 @mark.parametrize('tiny_dataset, t_start, t_end', [
