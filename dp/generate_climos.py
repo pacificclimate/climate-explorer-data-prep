@@ -113,6 +113,8 @@ def create_climo_files(outdir, input_file, t_start, t_end,
         'rx5dayETCCDI', 'sdiiETCCDI', 'suETCCDI', 'thresholds', 'tn10pETCCDI',
         'tn90pETCCDI', 'tnnETCCDI', 'tnxETCCDI', 'trETCCDI', 'tx10pETCCDI',
         'tx90pETCCDI', 'txnETCCDI', 'txxETCCDI', 'wsdiETCCDI',
+        #Degree-day variables
+        'cdd', 'fdd', 'gdd', 'hdd',
     }
 
     for variable in input_file.dependent_varnames():
@@ -133,7 +135,8 @@ def create_climo_files(outdir, input_file, t_start, t_end,
         ops_by_resolution = {
             'daily': ['ymonmean', 'yseasmean', 'timmean'],
             'monthly': ['ymonmean', 'yseasmean', 'timmean'],
-            'yearly': ['timmean']
+            'seasonal': ['yseasmean', 'timmean'],
+            'yearly': ['timmean'],
         }
         try:
             return [getattr(cdo, op)(input=temporal_subset) for op in ops_by_resolution[time_resolution]]
