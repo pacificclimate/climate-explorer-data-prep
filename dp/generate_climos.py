@@ -31,7 +31,7 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def create_climo_files(outdir, input_file, t_start, t_end,
+def create_climo_files(outdir, input_file, t_start, t_end, operation,
                        convert_longitudes=True, split_vars=True, split_intervals=True):
     """Generate climatological files from an input file and a selected time range.
 
@@ -125,16 +125,27 @@ def create_climo_files(outdir, input_file, t_start, t_end,
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
 
     # Form climatological means over dependent variables
-    def climo_outputs(time_resolution):
+    def climo_outputs(time_resolution, operation):
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
         """
-        ops_by_resolution = {
-            'daily': ['ymonmean', 'yseasmean', 'timmean'],
-            'monthly': ['ymonmean', 'yseasmean', 'timmean'],
-            'yearly': ['timmean']
-        }
+        if operation == 'mean':
+            ops_by_resolution = {
+                'daily': ['ymonmean', 'yseasmean', 'timmean'],
+                'monthly': ['ymonmean', 'yseasmean', 'timmean'],
+                'yearly': ['timmean']
+            }
+        elif operation == 'std':
+            ops_by_resolution = {
+                'daily': ['ymonstd', 'yseasstd', 'timstd'],
+                'monthly': ['ymonstd', 'yseasstd', 'timstd'],
+                'yearly': ['timstd']
+            }
+        else:
+            raise Exception('Unsupported operation, {}.  Expected \'mean\''
+                            ' or \'std\''.format(operation))
+
         try:
             return [getattr(cdo, op)(input=temporal_subset) for op in ops_by_resolution[time_resolution]]
         except:
@@ -142,7 +153,7 @@ def create_climo_files(outdir, input_file, t_start, t_end,
                              .format(ops_by_resolution.keys(), time_resolution))
 
     logger.info('Forming climatological means')
-    climo_means_files = climo_outputs(input_file.time_resolution)
+    climo_means_files = climo_outputs(input_file.time_resolution, operation)
 
     # Optionally concatenate means for each interval (month, season, year) into one file
     if not split_intervals:
