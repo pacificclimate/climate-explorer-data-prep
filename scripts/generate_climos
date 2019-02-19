@@ -38,7 +38,7 @@ def main(args):
             logger.info('{}: {}'.format(e.__class__.__name__, e))
         else:
             for _, t_range in input_file.climo_periods.items():
-                create_climo_files(args.outdir, input_file, *t_range, args.operation
+                create_climo_files(args.outdir, input_file, args.operation, *t_range,
                                    convert_longitudes=args.convert_longitudes, split_vars=args.split_vars)
 
 if __name__ == '__main__':
