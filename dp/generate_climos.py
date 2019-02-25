@@ -134,22 +134,11 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
         """
-        if operation == 'mean':
-            ops_by_resolution = {
-                'daily': ['ymonmean', 'yseasmean', 'timmean'],
-                'monthly': ['ymonmean', 'yseasmean', 'timmean'],
-                'yearly': ['timmean']
-            }
-        elif operation == 'sd':
-            ops_by_resolution = {
-                'daily': ['ymonstd', 'yseasstd', 'timstd'],
-                'monthly': ['ymonstd', 'yseasstd', 'timstd'],
-                'yearly': ['timstd']
-            }
-        else:
-            raise Exception('Unsupported operation, {}.  Expected \'mean\''
-                            ' or \'sd\''.format(operation))
-
+        ops_by_resolution = {
+            'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'yearly': ['tim' + operation]
+        }
         try:
             return [getattr(cdo, op)(input=temporal_subset) for op in ops_by_resolution[time_resolution]]
         except:
