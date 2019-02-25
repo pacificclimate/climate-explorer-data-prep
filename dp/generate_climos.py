@@ -372,7 +372,7 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
 
         # Update cell_methods to reflect the operation being done to the data
-        if operation == 'sd':
+        if operation == 'std':
             operation = 'standard_deviation'
 
         for key in cf.variables.keys():
