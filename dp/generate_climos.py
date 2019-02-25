@@ -174,7 +174,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     # Update metadata in climo files
     logger.debug('Updating climo metadata')
-    climo_files = [update_metadata_and_time_var(input_file, t_start, t_end, climo_file)
+    climo_files = [update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_file)
                          for climo_file in climo_files]
 
     # Split climo files by dependent variables if required
@@ -331,7 +331,7 @@ def split_on_variables(climo_file, var_names):
         return [climo_file]
 
 
-def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
+def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_filepath):
     """Updates an existing netCDF file to reflect the fact that it contains climatological means or standard deviations.
 
     Specifically:
@@ -380,6 +380,17 @@ def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
         except KeyError:
             raise ValueError('Expected climo file to contain # time values in {}, but found {}'
                              .format(num_times_to_interval_set.keys(), cf.time_var.size))
+
+
+        # Update cell_methods to reflect the operation being done to the data
+        if operation == 'sd':
+            operation = 'standard_deviation'
+
+        for key in cf.variables.keys():
+            try:
+                cf.variables[key].cell_methods = cf.variables[key].cell_methods + ' time: {} over days'.format(operation)
+            except AttributeError as e:
+                continue
 
         # Update frequency attribute to reflect that this is a climo file.
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
