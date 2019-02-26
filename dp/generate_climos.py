@@ -38,7 +38,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     Parameters:
         outdir (str): path to base directory in which to store output climo file(s)
         input_file (nchelpers.CFDataset): the input data file
-        operation (str): name of the cdo operation that will be performed on the data
+        operation (str): name of the cdo stat operation that will be performed on the data
         convert_longitudes (bool): If True, convert longitudes from [0, 360) to [-180, 180).
         split_vars (bool): If True, produce one file per dependent variable in input file;
             otherwise produce a single output file containing all variables.
@@ -89,7 +89,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     # TODO: This check needs to be done for standard deviations as well.
     #       Either the method will be changed or another check will be added.
-    if input_file.is_multi_year_mean:
+    if input_file.is_multi_year:
         raise Exception('This file already contains climatological means!')
 
     supported_vars = {
