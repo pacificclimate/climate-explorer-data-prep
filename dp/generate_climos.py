@@ -372,19 +372,27 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
 
         # Update cell_methods to reflect the operation being done to the data
+        cell_method_op = ''
         if operation == 'std':
-            operation = 'standard_deviation'
+            cell_method_op = 'standard_deviation'
+        elif operation == 'mean':
+            cell_method_op = operation
 
         for key in cf.variables.keys():
             try:
-                cf.variables[key].cell_methods = cf.variables[key].cell_methods + ' time: {} over days'.format(operation)
+                cf.variables[key].cell_methods = cf.variables[key].cell_methods + ' time: {} over days'.format(cell_method_op)
             except AttributeError as e:
+                # skip over vars that do not have cell_methods i.e. lat, lon
                 continue
 
         # Update frequency attribute to reflect that this is a climo file.
+        suffix = ''
+        if operation == 'std':
+            suffix = 'SD'
+
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
                          if interval in interval_set)
-        cf.frequency = prefix + 'Clim'
+        cf.frequency = prefix + 'Clim' + suffix
 
         # Generate info for updating time variable and creating climo bounds variable
         times, climo_bounds = generate_climo_time_var(
