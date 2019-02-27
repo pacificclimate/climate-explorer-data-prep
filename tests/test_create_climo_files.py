@@ -97,7 +97,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     False,
     True,
 ])
-def test_filenames(outdir, tiny_dataset, t_start, t_end, split_vars, split_intervals):
+def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the filenames are as expected. Tests only the following easy-to-test filename components:
     - variable name
     - frequency
