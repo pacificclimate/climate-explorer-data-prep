@@ -44,7 +44,7 @@ def basename_components(filepath):
     # Slightly tricky because variable names can contain underscores, which separate components.
     # We find the location f of the frequency component in the split and use it to assemble the components properly.
     pieces = os.path.basename(filepath).split('_')
-    f = next(i for i, piece in enumerate(pieces) if piece in 'msaClim saClim aClim sClim mClim'.split())
+    f = next(i for i, piece in enumerate(pieces) if piece in 'msaClim saClim aClim sClim mClim msaClimSD saClimSD aClimSD sClimSD mClimSD'.split())
     return ['_'.join(pieces[:f])] + pieces[f:]
 
 
@@ -52,9 +52,9 @@ def basename_components(filepath):
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
     ('gcm', 'mean', t_start(1965), t_end(1970)),
-    ('gcm_360_day_cal', 'mean', t_start(1965), t_end(1970)),  # test date processing
+    ('gcm_360_day_cal', 'std', t_start(1965), t_end(1970)),  # test date processing
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
@@ -84,9 +84,9 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
+    ('gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
@@ -116,15 +116,15 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
         with CFDataset(fp) as cf:
             assert cf.frequency == frequency
         if split_intervals:
-            assert frequency in 'mClim sClim aClim'.split()
+            assert frequency in 'mClim mClimSD sClim sClimSD aClim aClimSD'.split()
         else:
-            assert frequency in 'aClim saClim msaClim'.split()
+            assert frequency in 'aClim aClimSD saClim saClimSD msaClim msaClimSD'.split()
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
+    ('gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
@@ -151,23 +151,27 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
             assert cf.climo_end_time == t_end.isoformat()[:19] + 'Z'
             assert getattr(cf, 'climo_tracking_id', None) == getattr(tiny_dataset, 'tracking_id', None)
 
+    suffix = ''
+    if operation == 'std':
+        suffix = 'SD'
+
     if split_intervals:
         assert frequencies == {
-           'daily': {'mClim', 'sClim', 'aClim'},
-           'monthly': {'sClim', 'aClim'},
-           'yearly': {'aClim'},
+           'daily': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
+           'monthly': {'sClim' + suffix, 'aClim' + suffix},
+           'yearly': {'aClim' + suffix},
         }[tiny_dataset.time_resolution]
     else:
         assert frequencies == {
-            'daily': {'msaClim'},
-            'monthly': {'saClim'},
-            'yearly': {'aClim'}
+            'daily': {'msaClim' + suffix},
+            'monthly': {'saClim' + suffix},
+            'yearly': {'aClim' + suffix}
         }[tiny_dataset.time_resolution]
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
     ('downscaled_pr', 'mean', t_start(1965), t_end(1970)),
-    ('downscaled_pr_packed', 'mean', t_start(1965), t_end(1970)),
+    ('downscaled_pr_packed', 'std', t_start(1965), t_end(1970)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -205,9 +209,9 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, sp
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
+    ('gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
@@ -260,6 +264,11 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
                 'aClim': 1,
                 'saClim': 5,
                 'msaClim': 17,
+                'mClimSD': 12,
+                'sClimSD': 4,
+                'aClimSD': 1,
+                'saClimSD': 5,
+                'msaClimSD': 17,
             }[cf.frequency]
 
             assert cf.time_var
@@ -277,8 +286,8 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
             def d2n(date):
                 return date2num(date, cf.time_var.units, cf.time_var.calendar)
 
-            # Test monthly mean timesteps and climo bounds
-            if cf.frequency in {'mClim', 'msaClim'}:
+            # Test monthly timesteps and climo bounds
+            if cf.frequency in {'mClim', 'msaClim', 'mClimSD', 'msaClimSD'}:
                 for month in range(1, 13):
                     t = next(time_steps)
                     assert (t.year, t.month, t.day) == (climo_year, month, 15)
@@ -287,8 +296,8 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
                     assert cb[0] == d2n(datetime(t_start.year, month, 1))
                     assert cb[1] == d2n(datetime(t_end.year, month, 1) + relativedelta(months=1))
 
-            # Test seasonal mean timesteps and climo bounds
-            if cf.frequency in {'sClim', 'msaClim'}:
+            # Test seasonal timesteps and climo bounds
+            if cf.frequency in {'sClim', 'msaClim', 'sClimSD', 'msaClimSD'}:
                 for month in [1, 4, 7, 10]:  # center months of seasons
                     t = next(time_steps)
                     assert (t.year, t.month, t.day) == (climo_year, month, 16)
@@ -296,8 +305,8 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
                     assert cb[0] == d2n(datetime(t_start.year, month, 1) + relativedelta(months=-1))
                     assert cb[1] == d2n(datetime(t_end.year, month, 1) + relativedelta(months=2))
 
-            # Test annual mean timestep and climo bounds
-            if cf.frequency in {'aClim', 'msaClim'}:
+            # Test annual timestep and climo bounds
+            if cf.frequency in {'aClimSD', 'msaClimSD'}:
                 t = next(time_steps)
                 assert (t.year, t.month, t.day) == (climo_year, 7, 2)
                 cb = next(climo_bnds)
@@ -306,10 +315,10 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
+    ('gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     # No need to repleat with downscaled_pr
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('hydromodel_gcm', 'std', t_start(1984), t_end(1995)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
