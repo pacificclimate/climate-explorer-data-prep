@@ -377,11 +377,11 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         if not validate_operation(operation):
             raise Exception('Unsupported variable: cant\'t yet process {}'
                             .format(operation))
-        cell_method_op = ''
-        if operation == 'std':
-            cell_method_op = 'standard_deviation'
-        elif operation == 'mean':
-            cell_method_op = operation
+
+        cell_method_op = {
+            'std': 'standard_deviation',
+            'mean': 'mean'
+        }[operation]
 
         for key in cf.variables.keys():
             try:
@@ -391,9 +391,10 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
                 continue
 
         # Update frequency attribute to reflect that this is a climo file.
-        suffix = ''
-        if operation == 'std':
-            suffix = 'SD'
+        suffix = {
+            'std': 'SD',
+            'mean': 'Mean'
+        }[operation]
 
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
                          if interval in interval_set)
