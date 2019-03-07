@@ -90,6 +90,10 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     if input_file.is_multi_year:
         raise Exception('This file already contains climatological means!')
 
+    if not validate_operation(operation):
+        raise Exception('Unsupported variable: cant\'t yet process {}'
+                        .format(operation))
+
     supported_vars = {
         # Standard climate variables
         'tasmin', 'tasmax', 'pr',
@@ -131,15 +135,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
-        The supported operations must be in the cdo table of statistical values in order to work.
         """
-        supported_operations = {
-            'mean',
-            'std'
-        }
-        if operation not in supported_operations:
-            raise Exception('Unsupported operation: can\'t yet use {}'.format(operation))
-
         ops_by_resolution = {
             'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
             'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
@@ -378,6 +374,9 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
 
         # Update cell_methods to reflect the operation being done to the data
+        if not validate_operation(operation):
+            raise Exception('Unsupported variable: cant\'t yet process {}'
+                            .format(operation))
         cell_method_op = ''
         if operation == 'std':
             cell_method_op = 'standard_deviation'
@@ -423,3 +422,18 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         climo_bnds_var[:] = date2num(climo_bounds, cf.time_var.units, cf.time_var.calendar)
 
     return climo_filepath
+
+
+def validate_operation(operation):
+    """
+    Given an operation assert that it is supported.  In order to be a supported
+    operation it must be in the cdo table of statistical values.
+    """
+    supported_operations = {
+        'mean',
+        'std'
+    }
+    if operation in supported_operations:
+        return True
+    else:
+        return False
