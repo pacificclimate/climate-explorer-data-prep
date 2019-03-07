@@ -44,7 +44,12 @@ def basename_components(filepath):
     # Slightly tricky because variable names can contain underscores, which separate components.
     # We find the location f of the frequency component in the split and use it to assemble the components properly.
     pieces = os.path.basename(filepath).split('_')
-    f = next(i for i, piece in enumerate(pieces) if piece in 'msaClim saClim aClim sClim mClim msaClimSD saClimSD aClimSD sClimSD mClimSD'.split())
+    frequency_options = [
+        'msaClim', 'saClim', 'aClim', 'sClim', 'mClim',
+        'msaClimMean', 'saClimMean', 'aClimMean', 'sClimMean', 'mClimMean',
+        'msaClimSD', 'saClimSD', 'aClimSD', 'sClimSD', 'mClimSD'
+    ]
+    f = next(i for i, piece in enumerate(pieces) if piece in frequency_options)
     return ['_'.join(pieces[:f])] + pieces[f:]
 
 
@@ -151,9 +156,10 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
             assert cf.climo_end_time == t_end.isoformat()[:19] + 'Z'
             assert getattr(cf, 'climo_tracking_id', None) == getattr(tiny_dataset, 'tracking_id', None)
 
-    suffix = ''
-    if operation == 'std':
-        suffix = 'SD'
+    suffix = {
+        'std': 'SD',
+        'mean': 'Mean'
+    }[operation]
 
     if split_intervals:
         assert frequencies == {
