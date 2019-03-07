@@ -87,8 +87,6 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     """
     logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
 
-    # TODO: This check needs to be done for standard deviations as well.
-    #       Either the method will be changed or another check will be added.
     if input_file.is_multi_year:
         raise Exception('This file already contains climatological means!')
 
@@ -133,7 +131,15 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
+        The supported operations must be in the cdo table of statistical values in order to work.
         """
+        supported_operations = {
+            'mean',
+            'std'
+        }
+        if operation not in supported_operations:
+            raise Exception('Unsupported operation: can\'t yet use {}'.format(operation))
+
         ops_by_resolution = {
             'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
             'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
