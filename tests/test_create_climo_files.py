@@ -121,9 +121,9 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
         with CFDataset(fp) as cf:
             assert cf.frequency == frequency
         if split_intervals:
-            assert frequency in 'mClim mClimSD sClim sClimSD aClim aClimSD'.split()
+            assert frequency in 'mClim mClimSD mClimMean sClim sClimSD sClimMean aClim aClimSD aClimMean'.split()
         else:
-            assert frequency in 'aClim aClimSD saClim saClimSD msaClim msaClimSD'.split()
+            assert frequency in 'aClim aClimSD aClimMean saClim saClimSD saClimMean msaClim msaClimSD msaClimMean'.split()
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
@@ -270,6 +270,11 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
                 'aClim': 1,
                 'saClim': 5,
                 'msaClim': 17,
+                'mClimMean': 12,
+                'sClimMean': 4,
+                'aClimMean': 1,
+                'saClimMean': 5,
+                'msaClimMean': 17,
                 'mClimSD': 12,
                 'sClimSD': 4,
                 'aClimSD': 1,
