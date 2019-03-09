@@ -88,11 +88,9 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
 
     if input_file.is_multi_year:
-        raise Exception('This file already contains climatological means!')
+        raise Exception('This file already contains climatologies')
 
-    if not validate_operation(operation):
-        raise Exception('Unsupported variable: cant\'t yet process {}'
-                        .format(operation))
+    validate_operation(operation)
 
     supported_vars = {
         # Standard climate variables
@@ -136,6 +134,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
         """
+        validate_operation(operation)
         ops_by_resolution = {
             'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
             'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
@@ -374,10 +373,7 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
 
         # Update cell_methods to reflect the operation being done to the data
-        if not validate_operation(operation):
-            raise Exception('Unsupported variable: cant\'t yet process {}'
-                            .format(operation))
-
+        validate_operation(operation)
         cell_method_op = {
             'std': 'standard_deviation',
             'mean': 'mean'
@@ -434,7 +430,6 @@ def validate_operation(operation):
         'mean',
         'std'
     }
-    if operation in supported_operations:
-        return True
-    else:
-        return False
+    if operation not in supported_operations:
+        raise Exception('Unsupported variable: cant\'t yet process {}'
+                        .format(operation))
