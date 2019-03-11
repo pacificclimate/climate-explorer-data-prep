@@ -431,5 +431,5 @@ def validate_operation(operation):
         'std'
     }
     if operation not in supported_operations:
-        raise Exception('Unsupported variable: cant\'t yet process {}'
+        raise Exception('Unsupported operation: cant\'t yet process {}'
                         .format(operation))
