@@ -38,7 +38,7 @@ def main(args):
             logger.info('{}: {}'.format(e.__class__.__name__, e))
         else:
             for _, t_range in input_file.climo_periods.items():
-                create_climo_files(args.outdir, input_file, *t_range,
+                create_climo_files(args.outdir, input_file, args.operation, *t_range,
                                    convert_longitudes=args.convert_longitudes, split_vars=args.split_vars)
 
 if __name__ == '__main__':
@@ -56,6 +56,8 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--split-intervals', type=strtobool, dest='split_intervals',
                         help='Generate a separate file for each climatological period')
     parser.add_argument('-o', '--outdir', required=True, help='Output folder')
+    parser.add_argument('-p', '--operation', required=True, help='Data operation for the file',
+                        choices=['mean', 'std'])
     parser.set_defaults(dry_run=False, convert_longitudes=True, split_vars=True, split_intervals=True)
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))

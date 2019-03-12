@@ -31,13 +31,14 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def create_climo_files(outdir, input_file, t_start, t_end,
+def create_climo_files(outdir, input_file, operation, t_start, t_end,
                        convert_longitudes=True, split_vars=True, split_intervals=True):
     """Generate climatological files from an input file and a selected time range.
 
     Parameters:
         outdir (str): path to base directory in which to store output climo file(s)
         input_file (nchelpers.CFDataset): the input data file
+        operation (str): name of the cdo stat operation that will be performed on the data
         convert_longitudes (bool): If True, convert longitudes from [0, 360) to [-180, 180).
         split_vars (bool): If True, produce one file per dependent variable in input file;
             otherwise produce a single output file containing all variables.
@@ -57,20 +58,21 @@ def create_climo_files(outdir, input_file, t_start, t_end,
     - one output file for each dependent variable and each interval
     This behaviour is selected by the --split-vars and --split-intervals flags.
 
-    We use CDO to where it is convenient; in particular, to form the climatological means.
-    Other operations are performed directly by this code, in-place on intermediate or final output files.
+    We use CDO to where it is convenient; in particular, to form the climatological means and/or
+    standard deviations.  Other operations are performed directly by this code, in-place on intermediate
+    or final output files.
 
     To process an input file we must perform the following operations:
 
     - Select the temporal subset defined by t_start, t_end
-    - Form climatological means over each dependent variable over all available averaging intervals
+    - Form climatological means or standard deviations over each dependent variable over all available averaging intervals
     - if not split_intervals:
         - concat files (averaging intervals)
     - Post-process climatological results:
         - if convert_longitudes, transform longitude range from [0, 360) to [-180, 180)
     - Apply any special per-variable post-processing:
         - pr: scale to mm/day
-    - Update global attributes to reflect the fact this is a climatological means file
+    - Update global attributes to reflect the fact this is a climatological means or standard deviations file
     - if split_vars:
         - Split multiple variables into separate files
 
@@ -85,8 +87,10 @@ def create_climo_files(outdir, input_file, t_start, t_end,
     """
     logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
 
-    if input_file.is_multi_year_mean:
-        raise Exception('This file already contains climatological means!')
+    if input_file.is_multi_year:
+        raise Exception('This file already contains climatologies')
+
+    validate_operation(operation)
 
     supported_vars = {
         # Standard climate variables
@@ -124,16 +128,17 @@ def create_climo_files(outdir, input_file, t_start, t_end,
     date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
 
-    # Form climatological means over dependent variables
-    def climo_outputs(time_resolution):
+    # Form climatological means/standard deviations over dependent variables
+    def climo_outputs(time_resolution, operation):
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data - different operators are applied depending.
         If operators depend also on variable, then modify this function to depend on variable as well.
         """
+        validate_operation(operation)
         ops_by_resolution = {
-            'daily': ['ymonmean', 'yseasmean', 'timmean'],
-            'monthly': ['ymonmean', 'yseasmean', 'timmean'],
-            'yearly': ['timmean']
+            'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'yearly': ['tim' + operation]
         }
         try:
             return [getattr(cdo, op)(input=temporal_subset) for op in ops_by_resolution[time_resolution]]
@@ -141,45 +146,45 @@ def create_climo_files(outdir, input_file, t_start, t_end,
             raise ValueError("Expected input file to have time resolution in {}, found '{}'"
                              .format(ops_by_resolution.keys(), time_resolution))
 
-    logger.info('Forming climatological means')
-    climo_means_files = climo_outputs(input_file.time_resolution)
+    logger.info('Forming climatological {}s'.format(operation))
+    climo_files = climo_outputs(input_file.time_resolution, operation)
 
-    # Optionally concatenate means for each interval (month, season, year) into one file
+    # Optionally concatenate means/sds for each interval (month, season, year) into one file
     if not split_intervals:
-        logger.info('Concatenating mean interval files')
-        climo_means_files = [cdo.copy(input=' '.join(climo_means_files))]
+        logger.info('Concatenating {} interval files'.format(operation))
+        climo_files = [cdo.copy(input=' '.join(climo_files))]
 
     # Optionally convert longitudes in each file
     if convert_longitudes:
         logger.info('Converting longitudes')
-        climo_means_files = [convert_longitude_range(climo_means_file) for climo_means_file in climo_means_files]
+        climo_files = [convert_longitude_range(climo_file) for climo_file in climo_files]
 
     # Convert units on any pr variable in each file
-    climo_means_files = [convert_pr_var_units(input_file, climo_mean_file) for climo_mean_file in climo_means_files]
+    climo_files = [convert_pr_var_units(input_file, climo_file) for climo_file in climo_files]
 
     # Update metadata in climo files
     logger.debug('Updating climo metadata')
-    climo_means_files = [update_metadata_and_time_var(input_file, t_start, t_end, climo_means_file)
-                         for climo_means_file in climo_means_files]
+    climo_files = [update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_file)
+                         for climo_file in climo_files]
 
     # Split climo files by dependent variables if required
     if split_vars:
-        climo_means_files = [
+        climo_files = [
             fp
-            for climo_means_file in climo_means_files
-            for fp in split_on_variables(climo_means_file, input_file.dependent_varnames())
+            for climo_file in climo_files
+            for fp in split_on_variables(climo_file, input_file.dependent_varnames())
         ]
 
     # Move/copy the temporary files to their final output filepaths
     output_file_paths = []
-    for climo_means_file in climo_means_files:
-        with CFDataset(climo_means_file) as cf:
+    for climo_file in climo_files:
+        with CFDataset(climo_file) as cf:
             output_file_path = os.path.join(outdir, cf.cmor_filename)
         try:
             logger.info('Output file: {}'.format(output_file_path))
             if not os.path.exists(os.path.dirname(output_file_path)):
                 os.makedirs(os.path.dirname(output_file_path))
-            shutil.move(climo_means_file, output_file_path)
+            shutil.move(climo_file, output_file_path)
         except Exception as e:
             logger.warning('Failed to create climatology file. {}: {}'.format(e.__class__.__name__, e))
         else:
@@ -195,12 +200,12 @@ def create_climo_files(outdir, input_file, t_start, t_end,
 def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annual'}):
     """Generate information needed to update the climatological time variable.
 
-    :param t_start: (datetime.datetime) start date of period over which climatological means are formed
-    :param t_end: (datetime.datetime) end date of period over which climatological means are formed
-    :param types: (set) specifies what means have been generted, hence which time values to generate
+    :param t_start: (datetime.datetime) start date of period over which climatological means/standard deviations are formed
+    :param t_end: (datetime.datetime) end date of period over which climatological means/standards deviation are formed
+    :param types: (set) specifies what means/standards deviation have been generted, hence which time values to generate
     :returns: (tuple) times, climo_bounds
-        times: (list) datetime for *center* of each climatological mean period; see CF standard
-        climo_bounds: (list) bounds (start and end date) of each climatological mean period
+        times: (list) datetime for *center* of each climatological mean/standard deviation period; see CF standard
+        climo_bounds: (list) bounds (start and end date) of each climatological mean/standard deviation period
 
     ASSUMPTION: Time values are in the following order within the time dimension variable.
         monthly: 12 months in their usual order
@@ -236,7 +241,7 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
     # Annual time value
     # Standard climatological periods, provided by nchelpers and implicit here, begin Jan 1 and end Dec 31
     # This is a mismatch to hydrological years, which begin/end Oct 1 / Sep 30. Discussions with Markus Schnorbus
-    # confirm that for 30-year means, the difference in annual and
+    # confirm that for 30-year means/stanard deviations, the difference in annual and
     # season averages is negligible and therefore we do not have to allow for alternate begin and end dates.
     # """
     if 'annual' in types:
@@ -247,14 +252,14 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
     return times, climo_bounds
 
 
-def convert_longitude_range(climo_means):
+def convert_longitude_range(climo_data):
     """Transform longitude range from [0, 360) to [-180, 180).
 
     CDO offers no simple way to do this computation, therefore we do it directly.
 
-    WARNING: This code modifies the file with filepath climo_means IN PLACE.
+    WARNING: This code modifies the file with filepath climo_data IN PLACE.
     """
-    with CFDataset(climo_means, mode='r+') as cf:
+    with CFDataset(climo_data, mode='r+') as cf:
         convert_these = [cf.lon_var]
         if hasattr(cf.lon_var, 'bounds'):
             lon_bnds_var = cf.variables[cf.lon_var.bounds]
@@ -263,10 +268,10 @@ def convert_longitude_range(climo_means):
             for i, lon in np.ndenumerate(lon_var):
                 if lon >= 180:
                     lon_var[i] = lon - 360
-    return climo_means
+    return climo_data
 
 
-def convert_pr_var_units(input_file, climo_means):
+def convert_pr_var_units(input_file, climo_data):
     """If the file contains a 'pr' variable, and if its units are per second, convert its units to per day.
 
     """
@@ -294,30 +299,30 @@ def convert_pr_var_units(input_file, climo_means):
             else:
                 # This is not a packed file; modify the values proper
                 # Extract variable
-                pr_only = cdo.select('name=pr', input=climo_means)
+                pr_only = cdo.select('name=pr', input=climo_data)
                 # Multiply values by 86400 to convert from mm/s to mm/day
                 pr_only = cdo.mulc(str(seconds_per_day), input=pr_only)
                 # Replace pr in all-variables file
-                climo_means = cdo.replace(input=[climo_means, pr_only])
+                climo_data = cdo.replace(input=[climo_data, pr_only])
 
     # Update pr variable metadata as necessary to reflect changes madde
-    with CFDataset(climo_means, mode='r+') as cf:
+    with CFDataset(climo_data, mode='r+') as cf:
         for attr in pr_attributes:
             setattr(cf.variables['pr'], attr, pr_attributes[attr])
 
-    return climo_means
+    return climo_data
 
 
-def split_on_variables(climo_means_file, var_names):
+def split_on_variables(climo_file, var_names):
     if len(var_names) > 1:
-        return [cdo.select('name={}'.format(var_name), input=climo_means_file)
+        return [cdo.select('name={}'.format(var_name), input=climo_file)
                 for var_name in var_names]
     else:
-        return [climo_means_file]
+        return [climo_file]
 
 
-def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
-    """Updates an existing netCDF file to reflect the fact that it contains climatological means.
+def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_filepath):
+    """Updates an existing netCDF file to reflect the fact that it contains climatological means or standard deviations.
 
     Specifically:
     - add start and end time attributes
@@ -366,10 +371,30 @@ def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
             raise ValueError('Expected climo file to contain # time values in {}, but found {}'
                              .format(num_times_to_interval_set.keys(), cf.time_var.size))
 
+
+        # Update cell_methods to reflect the operation being done to the data
+        validate_operation(operation)
+        cell_method_op = {
+            'std': 'standard_deviation',
+            'mean': 'mean'
+        }[operation]
+
+        for key in cf.variables.keys():
+            try:
+                cf.variables[key].cell_methods = cf.variables[key].cell_methods + ' time: {} over days'.format(cell_method_op)
+            except AttributeError as e:
+                # skip over vars that do not have cell_methods i.e. lat, lon
+                continue
+
         # Update frequency attribute to reflect that this is a climo file.
+        suffix = {
+            'std': 'SD',
+            'mean': 'Mean'
+        }[operation]
+
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
                          if interval in interval_set)
-        cf.frequency = prefix + 'Clim'
+        cf.frequency = prefix + 'Clim' + suffix
 
         # Generate info for updating time variable and creating climo bounds variable
         times, climo_bounds = generate_climo_time_var(
@@ -394,3 +419,17 @@ def update_metadata_and_time_var(input_file, t_start, t_end, climo_filepath):
         climo_bnds_var[:] = date2num(climo_bounds, cf.time_var.units, cf.time_var.calendar)
 
     return climo_filepath
+
+
+def validate_operation(operation):
+    """
+    Given an operation assert that it is supported.  In order to be a supported
+    operation it must be in the cdo table of statistical values.
+    """
+    supported_operations = {
+        'mean',
+        'std'
+    }
+    if operation not in supported_operations:
+        raise Exception('Unsupported operation: cant\'t yet process {}'
+                        .format(operation))
