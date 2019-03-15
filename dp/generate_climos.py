@@ -121,7 +121,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     for variable in input_file.dependent_varnames():
         if variable not in supported_vars:
-            raise Exception("Unsupported variable: cant't yet process {}".format(variable))
+            raise Exception("Unsupported variable: can't yet process {}".format(variable))
 
     # Select the temporal subset defined by t_start, t_end
     logger.info('Selecting temporal subset')
@@ -148,8 +148,22 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     logger.info('Forming climatological {}s'.format(operation))
     climo_files = climo_outputs(input_file.time_resolution, operation)
+    
+    # Day-counting statistics like degree days or frost days are calculated by 
+    # counting the number of qualifying days in a month, season, or year. 
+    # So the value for a season or a year is the sum of all values of the months
+    # it contains.
+    # To calculate climatologies, we need to *sum* the values within a year, but
+    # take the *mean* of all years in the climatology.
+    # CDO doesn't have an operation that does exactly this, so we use ymonsum,
+    # yseassum, and timsum to sum ALL the values across the entire climatology,
+    # then divide by the number of years in the climatology to get the climatological
+    # mean.
+    if operation == "sum":
+        logger.info('Normalizing counted variables')
+        climo_files = [normalize_sums(input_file, climo_file, t_start, t_end) for climo_file in climo_files]
 
-    # Optionally concatenate means/sds for each interval (month, season, year) into one file
+    # Optionally concatenate values for each interval (month, season, year) into one file
     if not split_intervals:
         logger.info('Concatenating {} interval files'.format(operation))
         climo_files = [cdo.copy(input=' '.join(climo_files))]
@@ -251,6 +265,37 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
 
     return times, climo_bounds
 
+def normalize_sums(input_file, climo_file, t_start, t_end):
+    """Divide the climatology values by the number of years in the climatology.
+    This is for variables that represent a count of the number of times something
+    happens over a time period (day, month, year), like degree days or frost days.
+    In this case, the value of a month, season, or year is the SUM of the values
+    of the smaller units of time that make it up, but the value of a climatology
+    is the MEAN of the values of all years within it.
+    CDO doesn't have a sum-within-years / mean-between-years operations, so we
+    calculate the sum over the entire climatology, and then divide by the number
+    of years; this function does the latter
+    """
+    years = t_end.year - t_start.year + 1
+    for varname in input_file.dependent_varnames():
+        #check to see if this variable is packed.
+        var = input_file.variables[varname]
+        if hasattr(var, 'scale_factor') or hasattr(var, 'add_offset'):
+            # if the variable is packed, we don't need to chnge the data iself; 
+            # we can scale it by altering the packing constants instead.
+            scale_factor = var.scale_factor / years if hasattr(var, 'scale_factor') else 1 / years
+            offset = years * var.offset if hasattr(var, 'offset') else 0.0
+            with CFDataset(climo_file) as cf:
+                setattr(cf.variables[varname], 'scale_factor', scale_factor)
+                setattr(cf.variables[varname], 'offset', offset)
+                
+        else:
+            #if the variable isn't packed, divide the data by the # of years
+            extracted = cdo.select('name={}'.format(varname), input=climo_file)
+            extracted = cdo.divc(str(years), input=extracted)
+            climo_file = cdo.replace(input=[climo_file, extracted])
+    
+    return climo_file
 
 def convert_longitude_range(climo_data):
     """Transform longitude range from [0, 360) to [-180, 180).
@@ -373,10 +418,13 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
 
         # Update cell_methods to reflect the operation being done to the data
+        # For this and for the frequency attribute, the "sum" operation is a mean:
+        # the between-years mean of the within-years or within-seasons sum.
         validate_operation(operation)
         cell_method_op = {
             'std': 'standard_deviation',
-            'mean': 'mean'
+            'mean': 'mean',
+            'sum': 'mean'
         }[operation]
 
         for key in cf.variables.keys():
@@ -389,7 +437,8 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         # Update frequency attribute to reflect that this is a climo file.
         suffix = {
             'std': 'SD',
-            'mean': 'Mean'
+            'mean': 'Mean',
+            'sum': 'Mean'
         }[operation]
 
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
@@ -428,8 +477,9 @@ def validate_operation(operation):
     """
     supported_operations = {
         'mean',
-        'std'
+        'std',
+        'sum'
     }
     if operation not in supported_operations:
-        raise Exception('Unsupported operation: cant\'t yet process {}'
+        raise Exception('Unsupported operation: can\'t yet process {}'
                         .format(operation))
