@@ -117,6 +117,8 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'rx5dayETCCDI', 'sdiiETCCDI', 'suETCCDI', 'thresholds', 'tn10pETCCDI',
         'tn90pETCCDI', 'tnnETCCDI', 'tnxETCCDI', 'trETCCDI', 'tx10pETCCDI',
         'tx90pETCCDI', 'txnETCCDI', 'txxETCCDI', 'wsdiETCCDI',
+        # Degree Day variables
+        'cdd', 'fdd', 'gdd', 'hdd'
     }
 
     for variable in input_file.dependent_varnames():
@@ -138,6 +140,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         ops_by_resolution = {
             'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
             'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'seasonal': ['yseas' + operation, 'tim' + operation],
             'yearly': ['tim' + operation]
         }
         try:
