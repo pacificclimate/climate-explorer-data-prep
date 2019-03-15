@@ -13,6 +13,7 @@ The key indirected fixtures are:
 """
 # TODO: Add more test input files:
 # - hydromodel from observed data
+# - a packed degree day file
 
 import os
 from datetime import datetime
@@ -61,6 +62,7 @@ def basename_components(filepath):
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('cdd_seasonal', 'sum', t_start(1971), t_end(2000)) #test seasonal-only climatologies
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -78,7 +80,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
                                      split_vars=split_vars, split_intervals=split_intervals)
     num_vars = len(tiny_dataset.dependent_varnames())
     num_files = 1
-    num_intervals = 3  # TODO: determine this from the dataset
+    num_intervals = {"daily": 3, "monthly": 3, "seasonal": 2, "annual": 1}[tiny_dataset.time_resolution]
     if split_vars:
         num_files *= num_vars
     if split_intervals:
@@ -93,6 +95,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('cdd_seasonal', 'sum', t_start(1961), t_end(1990)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -131,6 +134,7 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('cdd_seasonal', 'sum', t_start(1981), t_end(2010)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -158,21 +162,45 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
 
     suffix = {
         'std': 'SD',
-        'mean': 'Mean'
+        'mean': 'Mean',
+        'sum': 'Mean'
     }[operation]
 
     if split_intervals:
         assert frequencies == {
            'daily': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
            'monthly': {'sClim' + suffix, 'aClim' + suffix},
+           'seasonal': {'sClim' + suffix, 'aClim' + suffix},
            'yearly': {'aClim' + suffix},
         }[tiny_dataset.time_resolution]
     else:
         assert frequencies == {
             'daily': {'msaClim' + suffix},
             'monthly': {'saClim' + suffix},
+            'seasonal': {'saClim' + suffix},
             'yearly': {'aClim' + suffix}
         }[tiny_dataset.time_resolution]
+
+@mark.parametrize('tiny_dataset, t_start, t_end', [
+    ('cdd_seasonal', t_start(1961), t_end(1990)),
+], indirect=['tiny_dataset'])
+@mark.parametrize('split_intervals', [
+    False,
+    True,
+])
+def test_normalize_sums(outdir, tiny_dataset, t_start, t_end, split_intervals):
+    """Tests that normalization works properly with the "sum" operation.
+    Checks to make sure no output value is larger or smaller than the 
+    max input value * intervals"""
+    #TODO: avoid assuming the input data is seasonal
+    climo_files = create_climo_files(outdir, tiny_dataset, "sum", t_start, t_end,
+                                     split_vars=False, split_intervals=split_intervals)
+    for cf in climo_files:
+        for var in tiny_dataset.dependent_varnames():
+            invar = tiny_dataset.variables[var][:]
+            with CFDataset(cf) as out:
+                outvar = out.variables[var][:]
+                assert outvar.max() <= 4 * invar.max()
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
@@ -219,6 +247,7 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, sp
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('cdd_seasonal', 'sum', t_start(1971), t_end(2000))
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
