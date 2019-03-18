@@ -16,10 +16,6 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def check_temp(tasmax, tasmin):
-    return mean([float(tasmax), float(tasmin)]) < 273
-
-
 def in_shape(arrays):
     shapes = set(map(np.shape, arrays))
     if len(shapes) == 1:
