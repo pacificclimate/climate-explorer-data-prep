@@ -17,10 +17,12 @@ logger.setLevel(logging.DEBUG)
 
 
 def in_shape(arrays):
+    '''Ensure the arrays are the same shape'''
     return len(set(map(np.shape, arrays))) == 1
 
 
 def build_prsn_array(pr_data, means, units):
+    '''Mask precipitation data where the temperature is not below freezing'''
     if len(units) > 1:
         raise Exception('Temperature files units do not match: {}'.format(units))
 
@@ -31,6 +33,7 @@ def build_prsn_array(pr_data, means, units):
 
 
 def create_netcdf_from_source(input_filepath, output_filepath):
+    '''Using another netCDF as a template copy over the data applicable to prsn'''
     with Dataset(input_filepath) as src, Dataset(output_filepath, mode='w') as dst:
         # Create the dimensions of the file
         for name, dim in src.dimensions.items():
@@ -66,11 +69,16 @@ def create_netcdf_from_source(input_filepath, output_filepath):
 
 
 def copy_netcdf_data(output_filepath, data, start, end):
+    '''Copy a chunk of the netCDF data'''
     with Dataset(output_filepath, mode='r+') as dst:
         dst.variables['prsn'][start:end] = data
 
 
 def create_output_filepath(filepath, outdir):
+    '''
+    Using the precipitation filename and output directory build an output
+    filepath
+    '''
     file_name = filepath.split('/')[-1]
     variable, *rest = file_name.split('_')
     variable = 'prsn'
@@ -83,6 +91,7 @@ def create_output_filepath(filepath, outdir):
 
 
 def match_datasets(datasets):
+    '''Determine whether the files will produce a correct result'''
     unique_vars = set()
     experiment_id = set()
     model_id = set()
@@ -109,6 +118,30 @@ def match_datasets(datasets):
 
 
 def chunk_process_netcdf(pr, tasmin, tasmax, max_len, output_filepath, chunk_size=100):
+    '''Process precipitation data into snowfall data
+
+    This method takes a precipitation, tasmin and tasmax file and uses them to
+    produce a snowfall file.  Using a mean of the temperature files the script
+    will look through all the cells in the datacube and mask any cells that
+    are not freezing.  This mask applies to the precipiation file and thus we
+    are left with cells where it was cold enough for snow.
+
+    The input files are read in small chunks to avoid filling up all available
+    memory and crashing the script.
+
+    Parameters:
+        pr (netCDF.Dataset): Dataset object for precipitation
+        tasmin (netCDF.Dataset): Dataset object for tasmin
+        tasmax (netCDF.Dataset): Dataset object for tasmax
+        max_len (int): The length of the precipitation variable to be used as
+            the loop condition
+        output_filepath (str): Path to base directory in which to store output
+            prsn file
+        chunk_size (int): Size of time dimension to be read from the datacube
+            (Defaulted to 100). The chunk of datacube being accessed will look
+            like: (chunk_size, lat_size, lon_size).
+    '''
+    # TODO: Figure out a way to dynamically choose chunksize
     chunk_start = 0
     chunk_end = chunk_size
 
@@ -150,8 +183,10 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     '''Generate precipiation as snow data using pr, tasmin and tasmax.
 
     Parameters:
-        pr_filepath (str): The filepath
-
+        pr_filepath (str): The filepath to desired precipiation data
+        tasmin_filepath (str): The filepath to desired tasmin data
+        tasmax_filepath (str): The filepath to desired tasmax data
+        outdir (str): Output directory path
     '''
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
