@@ -1,7 +1,9 @@
 import logging
-from netCDF4 import Dataset
 import numpy as np
+import os
+
 from statistics import mean
+from netCDF4 import Dataset
 
 
 # Set up logging
@@ -36,8 +38,8 @@ def build_pass_array(pr_data, means, units):
     return np.where(means < freezing, pr_data, np.nan)
 
 
-def create_netcdf_from_source(src_file, dst_file):
-    with Dataset(src_file) as src, Dataset(dst_file, mode='w') as dst:
+def create_netcdf_from_source(input_filepath, output_filepath):
+    with Dataset(input_filepath) as src, Dataset(output_filepath, mode='w') as dst:
         # Create the dimensions of the file
         for name, dim in src.dimensions.items():
             dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
@@ -73,19 +75,21 @@ def create_netcdf_from_source(src_file, dst_file):
         pass_var.delncattr('comment')
 
 
-def copy_netcdf_data(dst_file, data, start, end):
-    with Dataset(dst_file, mode='r+') as dst:
+def copy_netcdf_data(output_filepath, data, start, end):
+    with Dataset(output_filepath, mode='r+') as dst:
         dst.variables['pass'][start:end] = data
 
 
-def make_filename(filepath):
+def create_output_filepath(filepath, outdir):
     file_name = filepath.split('/')[-1]
     variable, *rest = file_name.split('_')
     variable = 'pass'
     suffix = ''
     for var in rest:
         suffix += '_' + var
-    return variable + suffix
+    if not os.path.exists(os.path.dirname(outdir)):
+        os.makedirs(os.path.dirname(outdir))
+    return os.path.join(outdir, variable + suffix)
 
 
 def match_dataset(datasets):
@@ -112,13 +116,13 @@ def match_dataset(datasets):
     return True
 
 
-def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath):
+def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
 
     # create template nc file from pr file
-    dst_file = make_filename(pr_filepath)
-    create_netcdf_from_source(pr_filepath, dst_file)
+    output_filepath = create_output_filepath(pr_filepath, outdir)
+    create_netcdf_from_source(pr_filepath, output_filepath)
 
     # open datasets
     pr_dataset = Dataset(pr_filepath)
@@ -164,7 +168,7 @@ def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath):
 
         # write netcdf
         logger.debug('Write pass data to netCDF')
-        copy_netcdf_data(dst_file, pass_data, chunk_start, chunk_end)
+        copy_netcdf_data(output_filepath, pass_data, chunk_start, chunk_end)
 
         # prep next loop
         chunk_start = chunk_end

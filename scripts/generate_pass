@@ -10,9 +10,10 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--prec', required=True, help='Precipitation file to process')
     parser.add_argument('-n', '--tasmin', required=True, help='Tasmin file to process')
     parser.add_argument('-x', '--tasmax', required=True, help='Tasmax file to process')
+    parser.add_argument('-o', '--outdir', help='Output directory')
     parser.add_argument('-l', '--loglevel', help='Logging level',
                         choices=['INFO', 'DEBUG', 'WARNING', 'ERROR'], default='INFO')
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))
 
-    generate_pass_file(args.prec, args.tasmin, args.tasmax)
+    generate_pass_file(args.prec, args.tasmin, args.tasmax, args.outdir)
