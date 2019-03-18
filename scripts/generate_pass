@@ -1,0 +1,18 @@
+#!python
+from argparse import ArgumentParser
+import logging
+
+from dp.generate_pass import logger, generate_pass_file
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Create precipitation as snow data from pr, tasmin, tasmax')
+    parser.add_argument('-p', '--prec', required=True, help='Precipitation file to process')
+    parser.add_argument('-n', '--tasmin', required=True, help='Tasmin file to process')
+    parser.add_argument('-x', '--tasmax', required=True, help='Tasmax file to process')
+    parser.add_argument('-l', '--loglevel', help='Logging level',
+                        choices=['INFO', 'DEBUG', 'WARNING', 'ERROR'], default='INFO')
+    args = parser.parse_args()
+    logger.setLevel(getattr(logging, args.loglevel))
+
+    generate_pass_file(args.prec, args.tasmin, args.tasmax)
