@@ -17,14 +17,10 @@ logger.setLevel(logging.DEBUG)
 
 
 def in_shape(arrays):
-    shapes = set(map(np.shape, arrays))
-    if len(shapes) == 1:
-        return True
-    else:
-        return False
+    return len(set(map(np.shape, arrays))) == 1
 
 
-def build_pass_array(pr_data, means, units):
+def build_prsn_array(pr_data, means, units):
     if len(units) > 1:
         raise Exception('Temperature files units do not match: {}'.format(units))
 
@@ -50,7 +46,7 @@ def create_netcdf_from_source(input_filepath, output_filepath):
             # Copy the variable attributes
             dst.variables[name].setncatts({att:var.getncattr(att) for att in var.ncattrs()})
 
-            # we will be replacing pr data with pass data
+            # we will be replacing pr data with prsn data
             if name == 'pr':
                 logger.debug('Skipping pr')
                 continue
@@ -58,28 +54,26 @@ def create_netcdf_from_source(input_filepath, output_filepath):
                 logger.debug('Copying {}'.format(name))
                 dst.variables[name][:] = src.variables[name][:]
 
-        # change pr metadata to pass equivalents=
-        dst.renameVariable('pr', 'pass')
-        pass_var = dst.variables['pass']
+        # change pr metadata to prsn equivalents=
+        dst.renameVariable('pr', 'prsn')
+        prsn_var = dst.variables['prsn']
 
-        pass_var.standard_name = 'snowfall_flux'
-        pass_var.long_name = 'Precipitation as snow'
-        pass_var.units = 'kg m-2 s-1'
-        pass_var.cell_methods = 'time: mean'
+        prsn_var.standard_name = 'snowfall_flux'
+        prsn_var.long_name = 'Precipitation as Snow'
 
-        pass_var.delncattr('original_name')
-        pass_var.delncattr('comment')
+        prsn_var.delncattr('original_name')
+        prsn_var.delncattr('comment')
 
 
 def copy_netcdf_data(output_filepath, data, start, end):
     with Dataset(output_filepath, mode='r+') as dst:
-        dst.variables['pass'][start:end] = data
+        dst.variables['prsn'][start:end] = data
 
 
 def create_output_filepath(filepath, outdir):
     file_name = filepath.split('/')[-1]
     variable, *rest = file_name.split('_')
-    variable = 'pass'
+    variable = 'prsn'
     suffix = ''
     for var in rest:
         suffix += '_' + var
@@ -88,7 +82,7 @@ def create_output_filepath(filepath, outdir):
     return os.path.join(outdir, variable + suffix)
 
 
-def match_dataset(datasets):
+def match_datasets(datasets):
     unique_vars = set()
     experiment_id = set()
     model_id = set()
@@ -112,7 +106,13 @@ def match_dataset(datasets):
     return True
 
 
-def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
+def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
+    '''Generate precipiation as snow data using pr, tasmin and tasmax.
+
+    Parameters:
+        pr_filepath (str): The filepath
+
+    '''
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
 
@@ -126,7 +126,7 @@ def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     tasmax_dataset = Dataset(tasmax_filepath)
 
     # make sure datasets match
-    if not match_dataset([pr_dataset, tasmin_dataset, tasmax_dataset]):
+    if not match_datasets([pr_dataset, tasmin_dataset, tasmax_dataset]):
         raise Exception('Datasets do not match, please ensure you are using the correct files')
 
     # prepare loop vars
@@ -160,11 +160,11 @@ def generate_pass_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
         # build data
         units = {tasmin_dataset.variables['tasmin'].units,
                  tasmax_dataset.variables['tasmax'].units}
-        pass_data = build_pass_array(pr_data, means, units)
+        prsn_data = build_prsn_array(pr_data, means, units)
 
         # write netcdf
-        logger.debug('Write pass data to netCDF')
-        copy_netcdf_data(output_filepath, pass_data, chunk_start, chunk_end)
+        logger.debug('Write prsn data to netCDF')
+        copy_netcdf_data(output_filepath, prsn_data, chunk_start, chunk_end)
 
         # prep next loop
         chunk_start = chunk_end

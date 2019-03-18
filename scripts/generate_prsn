@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 import logging
 
-from dp.generate_pass import logger, generate_pass_file
+from dp.generate_prsn import logger, generate_prsn_file
 
 
 if __name__ == '__main__':
@@ -16,4 +16,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))
 
-    generate_pass_file(args.prec, args.tasmin, args.tasmax, args.outdir)
+    generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir)
