@@ -96,14 +96,54 @@ def match_datasets(datasets):
         model_id.add(dataset.getncattr('model_id'))
         parent_experiment_rip.add(dataset.getncattr('parent_experiment_rip'))
 
+    # ensure all match
     if len(experiment_id) != 1 or len(model_id) != 1 or len(parent_experiment_rip) != 1:
         return False
 
+    # ensure we have the required variables to produce prsn
     for required_var in ['pr', 'tasmin', 'tasmax']:
         if required_var not in unique_vars:
             return False
 
     return True
+
+
+def chunk_process_netcdf(pr, tasmin, tasmax, max_len, output_filepath, chunk_size=100):
+    chunk_start = 0
+    chunk_end = chunk_size
+
+    if chunk_size > max_len:
+        chunk_size = max_len
+
+    while(chunk_start < max_len):
+        # end of array check
+        if chunk_end > max_len:
+            chunk_end = max_len
+
+        # get variable data
+        pr_data = pr.variables['pr'][chunk_start:chunk_end]
+        tasmin_data = tasmin.variables['tasmin'][chunk_start:chunk_end]
+        tasmax_data = tasmax.variables['tasmax'][chunk_start:chunk_end]
+
+        # shape check
+        if not in_shape([pr_data, tasmin_data, tasmax_data]):
+            raise Exception('Arrays do not have the same shape')
+
+        # form temperature means
+        means = np.mean([tasmin_data, tasmax_data], axis=0)
+
+        # build data
+        units = {tasmin.variables['tasmin'].units,
+                 tasmax.variables['tasmax'].units}
+        prsn_data = build_prsn_array(pr_data, means, units)
+
+        # write netcdf
+        logger.debug('Write prsn data to netCDF')
+        copy_netcdf_data(output_filepath, prsn_data, chunk_start, chunk_end)
+
+        # prep next loop
+        chunk_start = chunk_end
+        chunk_end += chunk_size
 
 
 def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
@@ -116,58 +156,21 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
 
+    pr = Dataset(pr_filepath)
+    tasmin = Dataset(tasmin_filepath)
+    tasmax = Dataset(tasmax_filepath)
+
+    # make sure datasets match
+    if not match_datasets([pr, tasmin, tasmax]):
+        raise Exception('Datasets do not match, please ensure you are using the correct files')
+    logger.info('Dataset are matching')
+
     # create template nc file from pr file
+    logger.info('Creating outfile')
     output_filepath = create_output_filepath(pr_filepath, outdir)
     create_netcdf_from_source(pr_filepath, output_filepath)
 
-    # open datasets
-    pr_dataset = Dataset(pr_filepath)
-    tasmin_dataset = Dataset(tasmin_filepath)
-    tasmax_dataset = Dataset(tasmax_filepath)
-
-    # make sure datasets match
-    if not match_datasets([pr_dataset, tasmin_dataset, tasmax_dataset]):
-        raise Exception('Datasets do not match, please ensure you are using the correct files')
-
-    # prepare loop vars
-    max_len = len(pr_dataset.variables['pr'])
-    chunk_size = 100
-    chunk_start = 0
-    chunk_end = chunk_size
-    if chunk_size > max_len:
-        chunk_size = max_len
-
-    logger.info('Processing files')
-    while(chunk_start < max_len):
-        # end of array check
-        if chunk_end > max_len:
-            chunk_end = max_len
-
-        logger.info('{}/{}, {}%'.format(chunk_end, max_len, round(((chunk_end/max_len) * 100), 2)))
-
-        # get variable data
-        pr_data = pr_dataset.variables['pr'][chunk_start:chunk_end]
-        tasmin_data = tasmin_dataset.variables['tasmin'][chunk_start:chunk_end]
-        tasmax_data = tasmax_dataset.variables['tasmax'][chunk_start:chunk_end]
-
-        # shape check
-        if not in_shape([pr_data, tasmin_data, tasmax_data]):
-            raise Exception('Arrays do not have the same shape')
-
-        # form temperature means
-        means = np.mean([tasmin_data, tasmax_data], axis=0)
-
-        # build data
-        units = {tasmin_dataset.variables['tasmin'].units,
-                 tasmax_dataset.variables['tasmax'].units}
-        prsn_data = build_prsn_array(pr_data, means, units)
-
-        # write netcdf
-        logger.debug('Write prsn data to netCDF')
-        copy_netcdf_data(output_filepath, prsn_data, chunk_start, chunk_end)
-
-        # prep next loop
-        chunk_start = chunk_end
-        chunk_end += chunk_size
+    logger.info('Processing files in chunks')
+    chunk_process_netcdf(pr, tasmin, tasmax, len(pr.variables['pr']), output_filepath)
 
     logger.info('Complete')
