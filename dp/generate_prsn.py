@@ -34,7 +34,7 @@ def is_unique_value(values):
 def determine_freezing(unit):
     '''Given a unit determine which temperature describes freezing'''
     freezing = 0.0
-    if unit == 'K':
+    if unit.lower() == 'k':
         freezing = 273.15
     return freezing
 
