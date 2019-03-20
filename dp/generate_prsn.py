@@ -52,14 +52,14 @@ def create_prsn_netcdf_from_source(input_filepath, output_filepath):
             dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
 
         # Copy the globals
-        dst.setncatts({att:src.getncattr(att) for att in src.ncattrs()})
+        dst.setncatts({attr:src.getncattr(attr) for attr in src.ncattrs()})
 
         # Create the variables in the file
         for name, var in src.variables.items():
             dst.createVariable(name, var.dtype, var.dimensions)
 
             # Copy the variable attributes
-            dst.variables[name].setncatts({att:var.getncattr(att) for att in var.ncattrs()})
+            dst.variables[name].setncatts({attr:var.getncattr(attr) for attr in var.ncattrs()})
 
             # we will be replacing pr data with prsn data
             if name == 'pr':
@@ -165,6 +165,7 @@ def check_pr_units(pr):
     '''Ensure we have expected pr units'''
     pr_variable = pr.variables['pr']
     pr_units = Unit.from_udunits_str(pr_variable.units)
+    # TODO: Add more unit cases
     if pr_units not in [Unit('kg / m**2 / s'), Unit('mm / s')]:
         logger.warning('Unexpected precipitation units {}'.format(pr_units))
         return False
@@ -239,8 +240,8 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
         tasmax_filepath (str): The filepath to desired tasmax data
         outdir (str): Output directory
     '''
-    logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
-                .format(pr_filepath, tasmin_filepath, tasmax_filepath))
+    for filepath in [pr_filepath, tasmin_filepath, tasmax_filepath]:
+        logger.info('Retrieving file: {}'.format(filepath))
 
     # datasets
     pr_dataset = CFDataset(pr_filepath)
