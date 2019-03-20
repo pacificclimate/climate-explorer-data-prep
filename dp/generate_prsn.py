@@ -128,25 +128,23 @@ def matching_datasets(datasets):
     Given a list of datasets, match important metadata vars to ensure the
     datasets are compatible.
     '''
-    experiment_id = []
-    model_id = []
-    parent_experiment_rip = []
+    required = {
+        'project': [],
+        'model': [],
+        'institute': [],
+        'experiment': [],
+        'ensemble_member': []
+    }
 
     for dataset in datasets:
-        experiment_id.append(dataset.getncattr('experiment_id'))
-        model_id.append(dataset.getncattr('model_id'))
-        parent_experiment_rip.append(dataset.getncattr('parent_experiment_rip'))
+        for attr in required.keys():
+            required[attr].append(getattr(dataset.metadata, attr))
 
-    # ensure metadata match
-    if not is_unique_value(experiment_id) or not is_unique_value(model_id) \
-       and not is_unique_value(parent_experiment_rip):
-        logger.warning(('Files do not have the same metadata:'
-                        '\n\texperiment_id: {}'
-                        '\n\tmodel_id: {}'
-                        '\n\tparent_experiment_rip: {}')
-                       .format(experiment_id, model_id, parent_experiment_rip))
-        return False
-
+    for attr, lst in required.items():
+        if not is_unique_value(lst):
+            logger.warning('Metadata does not match for {}, {}'
+                           .format(attr, lst))
+            return False
     return True
 
 
@@ -185,9 +183,9 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
     in from the time dimension.  Example: Chunk read in (100, all lon, all lat)
 
     Parameters:
-        pr (nchelpers.CFDataset): Dataset object for precipitation
-        tasmin (nchelpers.CFDataset): Dataset object for tasmin
-        tasmax (nchelpers.CFDataset): Dataset object for tasmax
+        pr (Variable): Variable object for precipitation
+        tasmin (Variable): Variable object for tasmin
+        tasmax (Variable): Variable object for tasmax
         max_len (int): The length of the precipitation variable to be used as
             the loop condition
         output_filepath (str): Path to base directory in which to store output
@@ -207,10 +205,10 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
         if end > max_len:
             end = max_len
 
-        # get variable data
-        pr_data = pr.variables['pr'][start:end]
-        tasmin_data = tasmin.variables['tasmin'][start:end]
-        tasmax_data = tasmax.variables['tasmax'][start:end]
+        # get data chunk
+        pr_data = pr[start:end]
+        tasmin_data = tasmin[start:end]
+        tasmax_data = tasmax[start:end]
 
         # shape check
         if not in_shape([pr_data, tasmin_data, tasmax_data]):
@@ -243,13 +241,15 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
 
-    pr = CFDataset(pr_filepath)
-    tasmin = CFDataset(tasmin_filepath)
-    tasmax = CFDataset(tasmax_filepath)
+    # datasets
+    pr_dataset = CFDataset(pr_filepath)
+    tasmin_dataset = CFDataset(tasmin_filepath)
+    tasmax_dataset = CFDataset(tasmax_filepath)
 
     # make sure datasets match
     logger.info('Conducting pre-process checks')
-    if not preprocess_checks(pr, tasmin, tasmax, ['pr', 'tasmin', 'tasmax']):
+    if not preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset,
+                             ['pr', 'tasmin', 'tasmax']):
         raise Exception('Pre-process checks have failed.')
 
     # create template nc file from pr file
@@ -258,8 +258,14 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     create_prsn_netcdf_from_source(pr_filepath, output_filepath)
 
     logger.info('Processing files in chunks')
-    freezing = determine_freezing(tasmin.variables['tasmin'].units)
-    max_len = len(pr.variables['pr'])
-    process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing)
+    pr_variable = pr.variables['pr']
+    tasmin_variable = tasmin.variables['tasmin']
+    tasmax_variable = tasmax.variables['tasmax']
+    max_len = len(pr_variable)
+    # by now we know that tasmin/tasmax have the same units
+    freezing = determine_freezing(tasmin_variable.units)
+
+    process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
+                    max_len, output_filepath, freezing)
 
     logger.info('Complete')
