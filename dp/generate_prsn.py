@@ -76,9 +76,10 @@ def create_prsn_netcdf_from_source(input_filepath, output_filepath):
         prsn_var.standard_name = 'snowfall_flux'
         prsn_var.long_name = 'Precipitation as Snow'
 
-        # TODO: Check for attributes before trying to delete them
-        prsn_var.delncattr('original_name')
-        prsn_var.delncattr('comment')
+        to_delete = ['original_name', 'comment']
+        for item in to_delete:
+            if hasattr(prsn_var, item):
+                prsn_var.delncattr(item)
 
 
 def copy_netcdf_data(output_filepath, data, start, end):
