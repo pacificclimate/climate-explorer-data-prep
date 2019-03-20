@@ -162,10 +162,16 @@ def matching_temperature_units(tasmin, tasmax):
 
 def check_pr_units(pr):
     '''Ensure we have expected pr units'''
+    valid_units = [
+        Unit('kg / m**2 / s'),
+        Unit('mm / s'),
+        Unit('kg / d / m**2'),
+        Unit('kg / m**2 / d')
+    ]
     pr_variable = pr.variables['pr']
     pr_units = Unit.from_udunits_str(pr_variable.units)
-    # TODO: Add more unit cases
-    if pr_units not in [Unit('kg / m**2 / s'), Unit('mm / s')]:
+
+    if pr_units not in valid_units:
         logger.warning('Unexpected precipitation units {}'.format(pr_units))
         return False
     else:
