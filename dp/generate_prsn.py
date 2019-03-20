@@ -19,7 +19,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-def in_shape(arrays):
+def unique_shape(arrays):
     '''Ensure the arrays are the same shape'''
     shapes = set(map(np.shape, arrays))
     if not len(shapes) == 1:
@@ -185,7 +185,7 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         has_required_vars([pr, tasmin, tasmax], required_vars) and \
         matching_temperature_units(tasmin, tasmax) and \
         check_pr_units(pr) and \
-        in_shape(variables)
+        unique_shape(variables)
 
 
 def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
