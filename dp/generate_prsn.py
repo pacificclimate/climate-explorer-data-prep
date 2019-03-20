@@ -4,7 +4,7 @@ import os
 
 from statistics import mean
 from math import floor
-from netCDF4 import Dataset
+from nchelpers import CFDataset
 
 from dp.units_helpers import Unit
 
@@ -46,7 +46,7 @@ def build_prsn_array(pr_data, means, freezing):
 
 def create_prsn_netcdf_from_source(input_filepath, output_filepath):
     '''Using another netCDF as a template copy over the data applicable to prsn'''
-    with Dataset(input_filepath) as src, Dataset(output_filepath, mode='w') as dst:
+    with CFDataset(input_filepath) as src, CFDataset(output_filepath, mode='w') as dst:
         # Create the dimensions of the file
         for name, dim in src.dimensions.items():
             dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
@@ -82,7 +82,7 @@ def create_prsn_netcdf_from_source(input_filepath, output_filepath):
 
 def copy_netcdf_data(output_filepath, data, start, end):
     '''Copy a chunk of the netCDF data'''
-    with Dataset(output_filepath, mode='r+') as dst:
+    with CFDataset(output_filepath, mode='r+') as dst:
         dst.variables['prsn'][start:end] = data
 
 
@@ -185,9 +185,9 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
     in from the time dimension.  Example: Chunk read in (100, all lon, all lat)
 
     Parameters:
-        pr (netCDF.Dataset): Dataset object for precipitation
-        tasmin (netCDF.Dataset): Dataset object for tasmin
-        tasmax (netCDF.Dataset): Dataset object for tasmax
+        pr (nchelpers.CFDataset): Dataset object for precipitation
+        tasmin (nchelpers.CFDataset): Dataset object for tasmin
+        tasmax (nchelpers.CFDataset): Dataset object for tasmax
         max_len (int): The length of the precipitation variable to be used as
             the loop condition
         output_filepath (str): Path to base directory in which to store output
@@ -238,14 +238,14 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
         pr_filepath (str): The filepath to desired precipiation data
         tasmin_filepath (str): The filepath to desired tasmin data
         tasmax_filepath (str): The filepath to desired tasmax data
-        outdir (str): Output directory path
+        outdir (str): Output directory
     '''
     logger.info('Retrieving files:\n\t{},\n\t{},\n\t{}'
                 .format(pr_filepath, tasmin_filepath, tasmax_filepath))
 
-    pr = Dataset(pr_filepath)
-    tasmin = Dataset(tasmin_filepath)
-    tasmax = Dataset(tasmax_filepath)
+    pr = CFDataset(pr_filepath)
+    tasmin = CFDataset(tasmin_filepath)
+    tasmax = CFDataset(tasmax_filepath)
 
     # make sure datasets match
     logger.info('Conducting pre-process checks')
