@@ -21,7 +21,12 @@ logger.setLevel(logging.DEBUG)
 
 def in_shape(arrays):
     '''Ensure the arrays are the same shape'''
-    return len(set(map(np.shape, arrays))) == 1
+    shapes = set(map(np.shape, arrays))
+    if not len(shapes) == 1:
+        logger.warning('Arrays are not the same shape {}'.format(shapes))
+        return False
+    else:
+        return True
 
 
 def is_unique_value(values):
@@ -37,11 +42,6 @@ def determine_freezing(unit):
     if unit.lower() == 'k':
         freezing = 273.15
     return freezing
-
-
-def build_prsn_array(pr_data, means, freezing):
-    '''Mask precipitation data where the temperature is not below freezing'''
-    return np.where(means < freezing, pr_data, np.nan)
 
 
 def create_prsn_netcdf_from_source(input_filepath, output_filepath):
@@ -76,6 +76,7 @@ def create_prsn_netcdf_from_source(input_filepath, output_filepath):
         prsn_var.standard_name = 'snowfall_flux'
         prsn_var.long_name = 'Precipitation as Snow'
 
+        # TODO: Check for attributes before trying to delete them
         prsn_var.delncattr('original_name')
         prsn_var.delncattr('comment')
 
@@ -150,23 +151,34 @@ def matching_datasets(datasets):
 
 def matching_temperature_units(tasmin, tasmax):
     '''Ensure the temperature datasets have matching units'''
-    return is_unique_value([tasmin.variables['tasmin'].units,
-                            tasmax.variables['tasmax'].units])
+    min_units = tasmin.variables['tasmin'].units
+    max_units = tasmax.variables['tasmax'].units
+    if not is_unique_value([min_units, max_units]):
+        logger.warning('Temperature units do not match: tasmin: {} tasmax: {}'
+                       .format(min_units, max_units))
+        return False
+    else:
+        return True
 
 
 def check_pr_units(pr):
     '''Ensure we have expected pr units'''
     pr_variable = pr.variables['pr']
     pr_units = Unit.from_udunits_str(pr_variable.units)
-    return pr_units in [Unit('kg / m**2 / s'), Unit('mm / s')]
+    if pr_units not in [Unit('kg / m**2 / s'), Unit('mm / s')]:
+        logger.warning('Unexpected precipitation units {}'.format(pr_units))
+        return False
+    else:
+        return True
 
 
-def preprocess_checks(pr, tasmin, tasmax, required_vars):
+def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
     '''Perform all pre-processing checks'''
     return matching_datasets([pr, tasmin, tasmax]) and \
         has_required_vars([pr, tasmin, tasmax], required_vars) and \
         matching_temperature_units(tasmin, tasmax) and \
-        check_pr_units(pr)
+        check_pr_units(pr) and \
+        in_shape(variables)
 
 
 def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
@@ -201,30 +213,19 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
         size = max_len
 
     while(start < max_len):
-        # end of array check
         if end > max_len:
             end = max_len
 
-        # get data chunk
         pr_data = pr[start:end]
         tasmin_data = tasmin[start:end]
         tasmax_data = tasmax[start:end]
 
-        # shape check
-        if not in_shape([pr_data, tasmin_data, tasmax_data]):
-            raise Exception('Arrays do not have the same shape')
-
-        # form temperature means
         means = np.mean([tasmin_data, tasmax_data], axis=0)
+        prsn_data = np.where(means < freezing, pr_data, np.nan)
 
-        # build data
-        prsn_data = build_prsn_array(pr_data, means, freezing)
-
-        # write netcdf
         logger.debug('Write prsn data to netCDF')
         copy_netcdf_data(output_filepath, prsn_data, start, end)
 
-        # prep next loop
         start = end
         end += size
 
@@ -246,10 +247,17 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     tasmin_dataset = CFDataset(tasmin_filepath)
     tasmax_dataset = CFDataset(tasmax_filepath)
 
+    # variables
+    pr_variable = pr_dataset.variables['pr']
+    tasmin_variable = tasmin_dataset.variables['tasmin']
+    tasmax_variable = tasmax_dataset.variables['tasmax']
+
     # make sure datasets match
     logger.info('Conducting pre-process checks')
+    variables = [pr_variable, tasmin_variable, tasmax_variable]
+    required_vars = ['pr', 'tasmin', 'tasmax']
     if not preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset,
-                             ['pr', 'tasmin', 'tasmax']):
+                             variables, required_vars):
         raise Exception('Pre-process checks have failed.')
 
     # create template nc file from pr file
@@ -258,9 +266,6 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     create_prsn_netcdf_from_source(pr_filepath, output_filepath)
 
     logger.info('Processing files in chunks')
-    pr_variable = pr.variables['pr']
-    tasmin_variable = tasmin.variables['tasmin']
-    tasmax_variable = tasmax.variables['tasmax']
     max_len = len(pr_variable)
     # by now we know that tasmin/tasmax have the same units
     freezing = determine_freezing(tasmin_variable.units)
