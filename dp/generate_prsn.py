@@ -87,13 +87,12 @@ def copy_netcdf_data(output_filepath, data, start, end):
         dst.variables['prsn'][start:end] = data
 
 
-def create_filepath_from_source(source_path, new_var, outdir):
+def create_filepath_from_source(source, new_var, outdir):
     '''
-    Using the source filename build a new output filepath with new_var and
+    Using the source cmor_filename build a new output filepath with new_var and
     output directory.
     '''
-    file_name = source_path.split('/')[-1]
-    variable, *rest = file_name.split('_')
+    variable, *rest = source.cmor_filename.split('_')
 
     suffix = ''
     for var in rest:
@@ -263,7 +262,7 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
 
     # create template nc file from pr file
     logger.info('Creating outfile')
-    output_filepath = create_filepath_from_source(pr_filepath, 'prsn', outdir)
+    output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
     create_prsn_netcdf_from_source(pr_filepath, output_filepath)
 
     logger.info('Processing files in chunks')
@@ -274,4 +273,4 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
                     max_len, output_filepath, freezing)
 
-    logger.info('Complete')
+    logger.info('Complete, output at: {}'.format(output_filepath))
