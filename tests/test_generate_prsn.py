@@ -8,12 +8,7 @@ from pkg_resources import resource_filename
 from nchelpers import CFDataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
     determine_freezing, create_prsn_netcdf_from_source, \
-    create_filepath_from_source, has_required_vars
-
-
-# helpers
-def get_dataset(filename):
-    return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(filename))
+    create_filepath_from_source, has_required_vars, matching_datasets
 
 
 @pytest.mark.parametrize('arrays', [
@@ -83,21 +78,28 @@ def test_create_filepath_from_source(tiny_dataset, new_var, outdir, expected):
         outdir + '/' + expected
 
 
-@pytest.mark.parametrize('pr, tasmin, tasmax', [
-    ('daily_pr', 'daily_tasmin', 'daily_tasmax')
+@pytest.mark.parametrize('required_vars', [
+    (['pr', 'tasmin', 'tasmax']),
+    (['pr', 'tasmin'])
 ])
-def test_has_required_vars(pr, tasmin, tasmax):
-    datasets = [get_dataset(pr), get_dataset(tasmin), get_dataset(tasmax)]
-    required_vars = ['pr', 'tasmin', 'tasmax']
-
+def test_has_required_vars(required_vars, datasets):
     assert has_required_vars(datasets, required_vars)
 
 
-@pytest.mark.parametrize('pr, tasmin, tasmax', [
-    ('daily_pr', 'daily_tasmin', 'daily_tasmax')
+@pytest.mark.parametrize('required_vars', [
+    (['pr', 'tasmin', 'tasmax', 'missing_var'])
 ])
-def test_has_required_vars_missing_vars(pr, tasmin, tasmax):
-    datasets = [get_dataset(pr), get_dataset(tasmin), get_dataset(tasmax)]
-    required_vars = ['pr', 'tasmin', 'tasmax', 'missing_var']
-
+def test_has_required_vars_missing_vars(required_vars, datasets):
     assert not has_required_vars(datasets, required_vars)
+
+
+def test_matching_datasets(datasets):
+    assert matching_datasets(datasets)
+
+
+@pytest.mark.parametrize('tiny_dataset', [
+    ('downscaled_pr')
+], indirect=['tiny_dataset'])
+def test_matching_datasets_not_matching(tiny_dataset, datasets):
+    datasets.append(tiny_dataset)
+    assert not matching_datasets(datasets)
