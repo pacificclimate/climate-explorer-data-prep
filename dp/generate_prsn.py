@@ -31,7 +31,7 @@ def unique_shape(arrays):
 
 def is_unique_value(values):
     '''
-    Given a list transform into set and ensure there is only one unique value
+       Given a list transform into set and ensure there is only one unique value
     '''
     return len(set(values)) == 1
 
@@ -44,54 +44,48 @@ def determine_freezing(unit):
     return freezing
 
 
-def create_prsn_netcdf_from_source(input_filepath, output_filepath):
-    '''Using another netCDF as a template copy over the data applicable to prsn'''
-    with CFDataset(input_filepath) as src, CFDataset(output_filepath, mode='w') as dst:
-        # Create the dimensions of the file
-        for name, dim in src.dimensions.items():
-            dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
+def create_prsn_netcdf_from_source(src, dst):
+    '''Using a precipiation netCDF as a template copy over the data applicable
+       to prsn
+    '''
+    # Create the dimensions of the file
+    for name, dim in src.dimensions.items():
+        dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
 
-        # Copy the globals
-        dst.setncatts({attr:src.getncattr(attr) for attr in src.ncattrs()})
+    # Copy the globals
+    dst.setncatts({attr:src.getncattr(attr) for attr in src.ncattrs()})
 
-        # Create the variables in the file
-        for name, var in src.variables.items():
-            dst.createVariable(name, var.dtype, var.dimensions)
+    # Create the variables in the file
+    for name, var in src.variables.items():
+        dst.createVariable(name, var.dtype, var.dimensions)
 
-            # Copy the variable attributes
-            dst.variables[name].setncatts({attr:var.getncattr(attr) for attr in var.ncattrs()})
+        # Copy the variable attributes
+        dst.variables[name].setncatts({attr:var.getncattr(attr) for attr in var.ncattrs()})
 
-            # we will be replacing pr data with prsn data
-            if name == 'pr':
-                logger.debug('Skipping pr')
-                continue
-            else:
-                logger.debug('Copying {}'.format(name))
-                dst.variables[name][:] = src.variables[name][:]
-
-        # change pr metadata to prsn equivalents=
-        dst.renameVariable('pr', 'prsn')
-        prsn_var = dst.variables['prsn']
-
-        prsn_var.standard_name = 'snowfall_flux'
-        prsn_var.long_name = 'Precipitation as Snow'
-
-        to_delete = ['original_name', 'comment']
-        for item in to_delete:
-            if hasattr(prsn_var, item):
-                prsn_var.delncattr(item)
+        # we will be replacing pr data with prsn data
+        if name != 'pr':
+            logger.debug('Copying {}'.format(name))
+            dst.variables[name][:] = src.variables[name][:]
+        else:
+            continue
 
 
-def copy_netcdf_data(output_filepath, data, start, end):
-    '''Copy a chunk of the netCDF data'''
-    with CFDataset(output_filepath, mode='r+') as dst:
-        dst.variables['prsn'][start:end] = data
+    # change pr metadata to prsn equivalents
+    dst.renameVariable('pr', 'prsn')
+    prsn_var = dst.variables['prsn']
+
+    prsn_var.standard_name = 'snowfall_flux'
+    prsn_var.long_name = 'Precipitation as Snow'
+
+    to_delete = ['original_name', 'comment']
+    for item in to_delete:
+        if hasattr(prsn_var, item):
+            prsn_var.delncattr(item)
 
 
 def create_filepath_from_source(source, new_var, outdir):
-    '''
-    Using the source cmor_filename build a new output filepath with new_var and
-    output directory.
+    '''Using the source cmor_filename build a new output filepath with new_var
+       and output directory.
     '''
     variable, *rest = source.cmor_filename.split('_')
 
@@ -106,9 +100,8 @@ def create_filepath_from_source(source, new_var, outdir):
 
 
 def has_required_vars(datasets, required_vars):
-    '''
-    Given a list of datasets and a list of required variables, ensure the
-    datasets contain all required variables.
+    ''' Given a list of datasets and a list of required variables, ensure the
+        datasets contain all required variables.
     '''
     unique_vars = set()
     for dataset in datasets:
@@ -125,9 +118,8 @@ def has_required_vars(datasets, required_vars):
 
 
 def matching_datasets(datasets):
-    '''
-    Given a list of datasets, match important metadata vars to ensure the
-    datasets are compatible.
+    '''Given a list of datasets, match important metadata vars to ensure the
+       datasets are compatible.
     '''
     required = {
         'project': [],
@@ -188,28 +180,28 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         unique_shape(variables)
 
 
-def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
+def process_to_prsn(pr, tasmin, tasmax, max_len, output_dataset, freezing):
     '''Process precipitation data into snowfall data
 
-    This method takes a precipitation, tasmin and tasmax file and uses them to
-    produce a snowfall file.  Using a mean of the temperature files the script
-    will look through all the cells in the datacube and mask any cells that
-    are not freezing.  This mask applies to the precipiation file and thus we
-    are left with cells where it was cold enough for snow.
+       This method takes a precipitation, tasmin and tasmax file and uses them
+       to produce a snowfall file.  Using a mean of the temperature files the
+       script will look through all the cells in the datacube and mask any
+       cells that are not freezing.  This mask applies to the precipiation file
+       and thus we are left with cells where it was cold enough for snow.
 
-    The input files are read in small chunks to avoid filling up all available
-    memory and crashing the script.  Size refers to the chunk size being read
-    in from the time dimension.  Example: Chunk read in (100, all lon, all lat)
+       The input files are read in small chunks to avoid filling up all
+       available memory and crashing the script.  Size refers to the chunk size
+       being read in from the time dimension.  Example: Chunk read in
+       (100, all lon, all lat).
 
-    Parameters:
-        pr (Variable): Variable object for precipitation
-        tasmin (Variable): Variable object for tasmin
-        tasmax (Variable): Variable object for tasmax
-        max_len (int): The length of the precipitation variable to be used as
-            the loop condition
-        output_filepath (str): Path to base directory in which to store output
-            prsn file
-        freezing (float): Freezing temperature
+       Parameters:
+            pr (Variable): Variable object for precipitation
+            tasmin (Variable): Variable object for tasmin
+            tasmax (Variable): Variable object for tasmax
+            max_len (int): The length of the precipitation variable to be used
+                as the loop condition
+            output_dataset (CFDataset): Dataset for prsn output
+            freezing (float): Freezing temperature
     '''
     # TODO: Figure out a way to dynamically choose chunksize
     size = 100
@@ -231,7 +223,7 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
         prsn_data = np.where(means < freezing, pr_data, np.nan)
 
         logger.debug('Write prsn data to netCDF')
-        copy_netcdf_data(output_filepath, prsn_data, start, end)
+        output_dataset.variables['prsn'][start:end] = prsn_data
 
         start = end
         end += size
@@ -240,11 +232,11 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_filepath, freezing):
 def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     '''Generate precipiation as snow data using pr, tasmin and tasmax.
 
-    Parameters:
-        pr_filepath (str): The filepath to desired precipiation data
-        tasmin_filepath (str): The filepath to desired tasmin data
-        tasmax_filepath (str): The filepath to desired tasmax data
-        outdir (str): Output directory
+       Parameters:
+            pr_filepath (str): The filepath to desired precipiation data
+            tasmin_filepath (str): The filepath to desired tasmin data
+            tasmax_filepath (str): The filepath to desired tasmax data
+            outdir (str): Output directory
     '''
     for filepath in [pr_filepath, tasmin_filepath, tasmax_filepath]:
         logger.info('Retrieving file: {}'.format(filepath))
@@ -259,7 +251,6 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     tasmin_variable = tasmin_dataset.variables['tasmin']
     tasmax_variable = tasmax_dataset.variables['tasmax']
 
-    # make sure datasets match
     logger.info('Conducting pre-process checks')
     variables = [pr_variable, tasmin_variable, tasmax_variable]
     required_vars = ['pr', 'tasmin', 'tasmax']
@@ -267,17 +258,18 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
                              variables, required_vars):
         raise Exception('Pre-process checks have failed.')
 
-    # create template nc file from pr file
     logger.info('Creating outfile')
     output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
-    create_prsn_netcdf_from_source(pr_filepath, output_filepath)
+    with CFDataset(output_filepath, mode='w') as output_dataset:
+        create_prsn_netcdf_from_source(pr_dataset, output_dataset)
 
     logger.info('Processing files in chunks')
-    max_len = len(pr_variable)
     # by now we know that tasmin/tasmax have the same units
     freezing = determine_freezing(tasmin_variable.units)
+    max_len = len(pr_variable)
+    with CFDataset(output_filepath, mode='r+') as output_dataset:
+        process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
+                        max_len, output_dataset, freezing)
 
-    process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
-                    max_len, output_filepath, freezing)
-
-    logger.info('Complete, output at: {}'.format(output_filepath))
+    logger.info('Output at: {}'.format(output_filepath))
+    logger.info('Complete')
