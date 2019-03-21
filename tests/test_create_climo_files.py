@@ -62,7 +62,7 @@ def basename_components(filepath):
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('cdd_seasonal', 'sum', t_start(1971), t_end(2000)) #test seasonal-only climatologies
+    ('cdd_seasonal', 'mean', t_start(1971), t_end(2000)) #test seasonal-only climatologies
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -95,7 +95,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('cdd_seasonal', 'sum', t_start(1961), t_end(1990)),
+    ('cdd_seasonal', 'mean', t_start(1961), t_end(1990)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -134,7 +134,7 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('cdd_seasonal', 'sum', t_start(1981), t_end(2010)),
+    ('cdd_seasonal', 'mean', t_start(1981), t_end(2010)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -163,7 +163,6 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
     suffix = {
         'std': 'SD',
         'mean': 'Mean',
-        'sum': 'Mean'
     }[operation]
 
     if split_intervals:
@@ -188,12 +187,12 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
     False,
     True,
 ])
-def test_normalize_sums(outdir, tiny_dataset, t_start, t_end, split_intervals):
+def test_form_means_from_sums(outdir, tiny_dataset, t_start, t_end, split_intervals):
     """Tests that normalization works properly with the "sum" operation.
     Checks to make sure no output value is larger or smaller than the 
     max input value * intervals"""
     #TODO: avoid assuming the input data is seasonal
-    climo_files = create_climo_files(outdir, tiny_dataset, "sum", t_start, t_end,
+    climo_files = create_climo_files(outdir, tiny_dataset, "mean", t_start, t_end,
                                      split_vars=False, split_intervals=split_intervals)
     for cf in climo_files:
         for var in tiny_dataset.dependent_varnames():
@@ -247,7 +246,7 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, sp
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('cdd_seasonal', 'sum', t_start(1971), t_end(2000))
+    ('cdd_seasonal', 'mean', t_start(1971), t_end(2000))
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,

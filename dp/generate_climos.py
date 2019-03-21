@@ -10,6 +10,7 @@ import numpy as np
 from cdo import Cdo
 from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
+from enum import Enum
 
 from nchelpers import CFDataset
 from nchelpers.date_utils import d2s
@@ -92,37 +93,96 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     validate_operation(operation)
 
-    supported_vars = {
-        # Standard climate variables
-        'tasmin', 'tasmax', 'pr',
-        # Hydrological modelling variables
-        'BASEFLOW',
-        'EVAP',
-        'GLAC_AREA_BAND',
-        'GLAC_MBAL_BAND',
-        'GLAC_OUTFLOW',
-        'PET_NATVEG',
-        'PREC',
-        'RAINF',
-        'RUNOFF',
-        'SNOW_MELT',
-        'SOIL_MOIST_TOT',
-        'SWE',
-        'SWE_BAND',
-        'TRANSP_VEG',
-        # Climdex variables
-        'cddETCCDI', 'csdiETCCDI', 'cwdETCCDI', 'dtrETCCDI', 'fdETCCDI',
-        'gslETCCDI', 'idETCCDI', 'prcptotETCCDI', 'r10mmETCCDI', 'r1mmETCCDI',
-        'r20mmETCCDI', 'r95pETCCDI', 'r99pETCCDI', 'rx1dayETCCDI',
-        'rx5dayETCCDI', 'sdiiETCCDI', 'suETCCDI', 'thresholds', 'tn10pETCCDI',
-        'tn90pETCCDI', 'tnnETCCDI', 'tnxETCCDI', 'trETCCDI', 'tx10pETCCDI',
-        'tx90pETCCDI', 'txnETCCDI', 'txxETCCDI', 'wsdiETCCDI',
-        # Degree Day variables
-        'cdd', 'fdd', 'gdd', 'hdd'
-    }
+    # Two processes are performed by this script.
+    # 1) If possible, it generates datasets with lower time resolution than 
+    #    the input data: daily -> monthly -> seasonal -> annual
+    # 2) It generates climatologies from the input data and any lower-resolution
+    #    datasets it has created by taking the multi-year mean or standard deviation
+    # In order to do #1, it must know how to aggregate data across a longer period, which
+    # varies by how a variable is generated
 
+    # Point variables represent measurements (or simulations thereof) at a specific moment.
+    # Data is aggregated across a longer time period by averaging it
+
+    # Count variables represent the number of times something happens within a period.
+    # Data is aggregated across a longer time period by summing it
+    
+    # Duration variables represent the length of a continuous period of time that
+    # meets certain qualifications.
+    # These variables cannot be aggregated across a longer time period without more
+    # information, due to uncertainity about whether the continuous periods described
+    # in shorter periods to be aggregated coincide.
+
+    # TODO - assign variable "thresholds" to a category.
+    # TODO - check hydrological modeling variables
+    # TODO - determine this from incoming cell methods, not a giant hardcoded list?
+    class Vtype(Enum):
+        POINT = 1
+        COUNT = 2
+        DURATION = 3
+    
+    variable_types = {
+        # Standard climate variables
+        'tasmin': Vtype.POINT,
+        'tasmax': Vtype.POINT, 
+        'pr': Vtype.POINT,
+        # Hydrological modelling variables
+        'BASEFLOW': Vtype.POINT,
+        'EVAP': Vtype.POINT,
+        'GLAC_AREA_BAND': Vtype.POINT,
+        'GLAC_MBAL_BAND': Vtype.POINT,
+        'GLAC_OUTFLOW': Vtype.POINT,
+        'PET_NATVEG': Vtype.POINT,
+        'PREC': Vtype.POINT,
+        'RAINF': Vtype.POINT,
+        'RUNOFF': Vtype.POINT,
+        'SNOW_MELT': Vtype.POINT,
+        'SOIL_MOIST_TOT': Vtype.POINT,
+        'SWE': Vtype.POINT,
+        'SWE_BAND': Vtype.POINT,
+        'TRANSP_VEG': Vtype.POINT,
+        # Climdex variables
+        'cddETCCDI': Vtype.DURATION,
+        'csdiETCCDI': Vtype.DURATION,
+        'cwdETCCDI': Vtype.DURATION,
+        'dtrETCCDI': Vtype.POINT,
+        'fdETCCDI': Vtype.COUNT,
+        'gslETCCDI': Vtype.DURATION,
+        'idETCCDI': Vtype.COUNT,
+        'prcptotETCCDI': Vtype.COUNT,
+        'r10mmETCCDI': Vtype.COUNT,
+        'r1mmETCCDI': Vtype.COUNT,
+        'r20mmETCCDI': Vtype.COUNT,
+        'r95pETCCDI': Vtype.COUNT,
+        'r99pETCCDI': Vtype.COUNT,
+        'rx1dayETCCDI': Vtype.POINT,
+        'rx5dayETCCDI': Vtype.POINT,
+        'sdiiETCCDI': Vtype.POINT,
+        'suETCCDI': Vtype.COUNT,
+        'tn10pETCCDI': Vtype.POINT,
+        'tn90pETCCDI': Vtype.POINT,
+        'tnnETCCDI': Vtype.POINT,
+        'tnxETCCDI': Vtype.POINT,
+        'trETCCDI': Vtype.COUNT,
+        'tx10pETCCDI': Vtype.POINT,
+        'tx90pETCCDI': Vtype.POINT,
+        'txnETCCDI': Vtype.POINT,
+        'txxETCCDI': Vtype.POINT,
+        'wsdiETCCDI': Vtype.DURATION,
+        # Degree Day Variables
+        'cdd': Vtype.COUNT,
+        'fdd': Vtype.COUNT,
+        'gdd': Vtype.COUNT,
+        'hdd': Vtype.COUNT,
+        }
+
+    var_type = None
     for variable in input_file.dependent_varnames():
-        if variable not in supported_vars:
+        if variable in variable_types:
+            if var_type and var_type != variable_types[variable]:
+                raise Exception("Only one type of variable allowed per file")
+            var_type = variable_types[variable]
+        else:
             raise Exception("Unsupported variable: can't yet process {}".format(variable))
 
     # Select the temporal subset defined by t_start, t_end
@@ -131,41 +191,63 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
 
     # Form climatological means/standard deviations over dependent variables
-    def climo_outputs(time_resolution, operation):
+    def climo_outputs(time_resolution, operation, data, no_aggregation = False):
         """Return a list of cdo operators that generate the desired climo outputs.
-        Result depends on the time resolution of input file data - different operators are applied depending.
-        If operators depend also on variable, then modify this function to depend on variable as well.
+        Result depends on the time resolution of input file data. If no_aggregation 
+        is true, only operations that generate climatologies at the exact same
+        resolution as the input dataset will be used. 
         """
-        validate_operation(operation)
-        ops_by_resolution = {
-            'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
-            'monthly': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
-            'seasonal': ['yseas' + operation, 'tim' + operation],
+        if time_resolution == "daily" and no_aggregation:
+            raise Exception("Cannot generate climatologies from a daily dataset without aggregation")
+        
+        climo_ops = {
+            'daily': [],
+            'monthly': ['ymon' + operation],
+            'seasonal': ['yseas' + operation],
             'yearly': ['tim' + operation]
-        }
+            }
+        aggregating_climo_ops = {
+            'daily': ['ymon' + operation, 'yseas' + operation, 'tim' + operation],
+            'monthly': ['yseas' + operation, 'tim' + operation],
+            'seasonal': ['tim' + operation],
+            'yearly': []
+            }
+        operations = climo_ops[time_resolution] + (aggregating_climo_ops[time_resolution] if not no_aggregation else [])
         try:
-            return [getattr(cdo, op)(input=temporal_subset) for op in ops_by_resolution[time_resolution]]
+            return [getattr(cdo, op)(input=data) for op in operations]
         except:
             raise ValueError("Expected input file to have time resolution in {}, found '{}'"
-                             .format(ops_by_resolution.keys(), time_resolution))
+                             .format(climo_ops.keys(), time_resolution))
 
     logger.info('Forming climatological {}s'.format(operation))
-    climo_files = climo_outputs(input_file.time_resolution, operation)
-    
-    # Day-counting statistics like degree days or frost days are calculated by 
-    # counting the number of qualifying days in a month, season, or year. 
-    # So the value for a season or a year is the sum of all values of the months
-    # it contains.
-    # To calculate climatologies, we need to *sum* the values within a year, but
-    # take the *mean* of all years in the climatology.
-    # CDO doesn't have an operation that does exactly this, so we use ymonsum,
-    # yseassum, and timsum to sum ALL the values across the entire climatology,
-    # then divide by the number of years in the climatology to get the climatological
-    # mean.
-    if operation == "sum":
-        logger.info('Normalizing counted variables')
-        climo_files = [normalize_sums(input_file, climo_file, t_start, t_end) for climo_file in climo_files]
+    if var_type == Vtype.POINT:
+        # cdo can handle these variables in a single step
+        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, False)
+    elif var_type == Vtype.COUNT:
+        # cdo's ymon* climatology-creating operations assume means for constructing subyear 
+        # aggregate datasets (like making a monthly dataset from a daily dataset).
+        # Count variables should be summed, not meaned, to aggregate within a year. 
+        # We construct the aggregate datasets explicitly with a separate cdo command,
+        # then calculate climatologies - disallowing further aggregation - from them.
+        aggregations = {}
+        if input_file.time_resolution != "daily":
+            aggregations[input_file.time_resolution] = temporal_subset
 
+        if input_file.time_resolution in ["daily", "monthly", "seasonal"]:
+            aggregations["yearly"] = cdo.yearsum(input=temporal_subset)
+        if input_file.time_resolution in ["daily", "monthly"]:
+            aggregations["seasonal"] = cdo.seasum(input=temporal_subset)
+        if input_file.time_resolution == "daily":
+            aggregations["monthly"] = cd.monsum(input=temporal_subset) 
+
+        climo_files = []
+        for res in aggregations:
+            climo_files.extend(climo_outputs(res, operation, aggregations[res], True))
+    elif var_type == Vtype.DURATION:
+        # Sub-year aggregation cannot be performed at all with these variables.
+        # We can only generate climatologies at the exact resolution we receive.
+        climo_files = climo_outputs(input_file.time_resolution, temporal_subset, operation, True)
+    
     # Optionally concatenate values for each interval (month, season, year) into one file
     if not split_intervals:
         logger.info('Concatenating {} interval files'.format(operation))
@@ -268,7 +350,13 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
 
     return times, climo_bounds
 
-def normalize_sums(input_file, climo_file, t_start, t_end):
+def scale_data(climo_file, variable, packed, op, constant):
+    """Multiply or divide unpacked variable data in a file by a constant.
+    Uses the cdo operations mulc or divc for unpacked data; alters the 
+    scale_factor and offset for packed data."""
+
+
+def form_means_from_sums(input_file, climo_file, t_start, t_end):
     """Divide the climatology values by the number of years in the climatology.
     This is for variables that represent a count of the number of times something
     happens over a time period (day, month, year), like degree days or frost days.
@@ -279,6 +367,7 @@ def normalize_sums(input_file, climo_file, t_start, t_end):
     calculate the sum over the entire climatology, and then divide by the number
     of years; this function does the latter
     """
+    logger.info('Creating means from counted variable sums')
     years = t_end.year - t_start.year + 1
     for varname in input_file.dependent_varnames():
         #check to see if this variable is packed.
@@ -427,7 +516,6 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         cell_method_op = {
             'std': 'standard_deviation',
             'mean': 'mean',
-            'sum': 'mean'
         }[operation]
 
         for key in cf.variables.keys():
@@ -441,7 +529,6 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         suffix = {
             'std': 'SD',
             'mean': 'Mean',
-            'sum': 'Mean'
         }[operation]
 
         prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
@@ -481,7 +568,6 @@ def validate_operation(operation):
     supported_operations = {
         'mean',
         'std',
-        'sum'
     }
     if operation not in supported_operations:
         raise Exception('Unsupported operation: can\'t yet process {}'
