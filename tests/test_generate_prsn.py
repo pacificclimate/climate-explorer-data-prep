@@ -3,10 +3,17 @@ import os
 
 import numpy as np
 from tempfile import NamedTemporaryFile
+from pkg_resources import resource_filename
 
 from nchelpers import CFDataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
-    determine_freezing, create_prsn_netcdf_from_source
+    determine_freezing, create_prsn_netcdf_from_source, \
+    create_filepath_from_source, has_required_vars
+
+
+# helpers
+def get_dataset(filename):
+    return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(filename))
 
 
 @pytest.mark.parametrize('arrays', [
@@ -64,3 +71,33 @@ def test_create_prsn_netcdf_from_source(tiny_dataset, fake_dataset):
     assert np.shape(fake_dataset.variables['prsn']) == (11688, 4, 2)
     assert fake_dataset.variables['prsn'].standard_name == 'snowfall_flux'
     assert fake_dataset.variables['prsn'].long_name == 'Precipitation as Snow'
+
+
+@pytest.mark.parametrize('tiny_dataset, new_var, expected', [
+    ('downscaled_pr', 'prsn', 'prsn_day_BCCAQ2_ACCESS1-0_ACCESS1-0+historical+rcp45+r1i1p1_r1i1p1_19600101-19911231.nc'),
+    ('downscaled_pr', 'tasmin', 'tasmin_day_BCCAQ2_ACCESS1-0_ACCESS1-0+historical+rcp45+r1i1p1_r1i1p1_19600101-19911231.nc'),
+    ('downscaled_pr', 'tasmax', 'tasmax_day_BCCAQ2_ACCESS1-0_ACCESS1-0+historical+rcp45+r1i1p1_r1i1p1_19600101-19911231.nc')
+], indirect=['tiny_dataset'])
+def test_create_filepath_from_source(tiny_dataset, new_var, outdir, expected):
+    assert create_filepath_from_source(tiny_dataset, new_var, outdir) == \
+        outdir + '/' + expected
+
+
+@pytest.mark.parametrize('pr, tasmin, tasmax', [
+    ('daily_pr', 'daily_tasmin', 'daily_tasmax')
+])
+def test_has_required_vars(pr, tasmin, tasmax):
+    datasets = [get_dataset(pr), get_dataset(tasmin), get_dataset(tasmax)]
+    required_vars = ['pr', 'tasmin', 'tasmax']
+
+    assert has_required_vars(datasets, required_vars)
+
+
+@pytest.mark.parametrize('pr, tasmin, tasmax', [
+    ('daily_pr', 'daily_tasmin', 'daily_tasmax')
+])
+def test_has_required_vars_missing_vars(pr, tasmin, tasmax):
+    datasets = [get_dataset(pr), get_dataset(tasmin), get_dataset(tasmax)]
+    required_vars = ['pr', 'tasmin', 'tasmax', 'missing_var']
+
+    assert not has_required_vars(datasets, required_vars)
