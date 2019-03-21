@@ -6,9 +6,11 @@ from tempfile import NamedTemporaryFile
 from pkg_resources import resource_filename
 
 from nchelpers import CFDataset
+from conftest import get_dataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
     determine_freezing, create_prsn_netcdf_from_source, \
-    create_filepath_from_source, has_required_vars, matching_datasets
+    create_filepath_from_source, has_required_vars, matching_datasets, \
+    matching_temperature_units, check_pr_units
 
 
 @pytest.mark.parametrize('arrays', [
@@ -103,3 +105,43 @@ def test_matching_datasets(datasets):
 def test_matching_datasets_not_matching(tiny_dataset, datasets):
     datasets.append(tiny_dataset)
     assert not matching_datasets(datasets)
+
+
+@pytest.mark.parametrize('tasmin, tasmax', [
+    ('daily_tasmin', 'daily_tasmax')
+])
+def test_matching_temperature_units(tasmin, tasmax):
+    tasmin_dataset = get_dataset(tasmin)
+    tasmax_dataset = get_dataset(tasmax)
+    assert matching_temperature_units(tasmin_dataset, tasmax_dataset)
+
+
+@pytest.mark.parametrize('tasmin, tasmax', [
+    ('daily_tasmin', 'downscaled_tasmax')
+])
+def test_matching_temperature_units_not_matching(tasmin, tasmax):
+    tasmin_dataset = get_dataset(tasmin)
+    tasmax_dataset = get_dataset(tasmax)
+    assert not matching_temperature_units(tasmin_dataset, tasmax_dataset)
+
+
+@pytest.mark.parametrize('tiny_dataset', [
+    ('downscaled_pr'),
+    ('downscaled_pr_packed'),
+    ('daily_pr')
+], indirect=['tiny_dataset'])
+def test_check_pr_units(tiny_dataset):
+    assert check_pr_units(tiny_dataset)
+
+
+@pytest.mark.parametrize('fake_dataset', [
+    {
+        'dimensions': [('time', 10)],
+        'variables': [
+            {'name': 'pr', 'dimensions': ('time',),
+             'attributes': {'units': 'kg'}},
+        ]
+    }
+], indirect=['fake_dataset'])
+def test_check_pr_units_bad_unit(fake_dataset):
+    assert not check_pr_units(fake_dataset)
