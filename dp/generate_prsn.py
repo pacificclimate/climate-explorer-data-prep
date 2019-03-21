@@ -10,7 +10,8 @@ from dp.units_helpers import Unit
 
 
 # Set up logging
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', "%Y-%m-%d %H:%M:%S")
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s',
+                              "%Y-%m-%d %H:%M:%S")
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
@@ -30,8 +31,8 @@ def unique_shape(arrays):
 
 
 def is_unique_value(values):
-    '''
-       Given a list transform into set and ensure there is only one unique value
+    '''Given a list transform into set and ensure there is only one unique
+       value.
     '''
     return len(set(values)) == 1
 
