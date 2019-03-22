@@ -5,14 +5,14 @@
 
 ## Historical note
 
-Prior to 2017 Aug 17, these scripts were part of the 
+Prior to 2017 Aug 17, these scripts were part of the
 [Climate Explorer backend](https://github.com/pacificclimate/climate-explorer-backend).
 
 These scripts are now a separate project with their own repository (this one).
-A full commit history of the data prep scripts was retained during the migration to this repo. 
+A full commit history of the data prep scripts was retained during the migration to this repo.
 Most (but, mysteriously, not quite all) of the commit history for non-data prep code was pruned during migration.
 
-No releases in the original CE backend specifically related to or documented changes to these scripts, 
+No releases in the original CE backend specifically related to or documented changes to these scripts,
 so this project starts with release version 0.1.0.
 
 ## Installation
@@ -46,9 +46,9 @@ They are, however, Python scripts.
 
 ### Testing
 
-Very regrettably, it is prohibitively difficult to install `cdo` 
+Very regrettably, it is prohibitively difficult to install `cdo`
 ([Climate Data Operators](https://code.mpimet.mpg.de/projects/cdo/wiki/Cdo%7Brbpy%7D))
-in the Travis CI environment. 
+in the Travis CI environment.
 (NetCDF support isn't built into the debian cdo pacakges. Installing NetCDF proved very hard. Argh.)
 That said, `.travis.yml` is configured with commented out portions in anticipation of the day we can really run these
 tests in Travis.
@@ -75,20 +75,20 @@ git commit -m"Bump to version x.x.x"
 git tag -a -m"x.x.x" x.x.x
 git push --follow-tags
   ```
-  
+
 ## Scripts
 
 ### `generate_climos`: Generate climatological means
 
 #### Purpose
 
-To generate files containing climatological means from input files of daily, monthly, or yearly data that adhere to the 
-[PCIC metadata standard ](https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data) 
+To generate files containing climatological means from input files of daily, monthly, or yearly data that adhere to the
+[PCIC metadata standard ](https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data)
 (and consequently to CMIP5 and CF standards).
 
 Means are formed over the time dimension; the spatial dimensions are preserved.
 
-Output can optionally be directed into separate files for each variable and/or each averaging interval 
+Output can optionally be directed into separate files for each variable and/or each averaging interval
 (month, season, year).
 
 This script:
@@ -100,16 +100,16 @@ This script:
 3. For each climatological period:
 
     a. Aggregates the daily data for the period into a new climatological output file.
-    
+
     b. Revises the time variable of the output file to meet CF1.6/CMIP5 specification.
-    
+
     c. Adds a climatology_bounds variable to the output file match climatological period.
-    
+
     d. Optionally splits the climatology file into one file per dependent variable in the input file.
-    
+
     e. Uses PCIC standards-compliant filename(s) for the output file(s).
 
-All input file metadata is obtained from standard metadata attributes in the netCDF file. 
+All input file metadata is obtained from standard metadata attributes in the netCDF file.
 No metadata is deduced from the filename or path.
 
 All output files contain PCIC standard metadata attributes appropriate to climatology files.
@@ -123,7 +123,7 @@ generate_climos --dry-run -o outdir files...
 # Use defaults:
 generate_climos -o outdir files...
 
-# Split output into separate files per dependent variable and per averaging interval 
+# Split output into separate files per dependent variable and per averaging interval
 generate_climos --split-vars --split-intervals -o outdir files...
 ```
 
@@ -131,9 +131,9 @@ Usage is further detailed in the script help information: `generate_climos -h`
 
 #### PCIC Job Queueing tool for processing many / large files
 
-For several reasons -- file copying, computation time, record-keeping, etc. -- it's inadvisable to run 
-`generate_climos` from the command line for many and/or large input files. 
-Fortunately there is a tool to support this kind of processing and record-keeping: 
+For several reasons -- file copying, computation time, record-keeping, etc. -- it's inadvisable to run
+`generate_climos` from the command line for many and/or large input files.
+Fortunately there is a tool to support this kind of processing and record-keeping:
 [PCIC Job Queueing](https://github.com/pacificclimate/jobqueueing).
 
 ### `split_merged_climos`: Split climo means files into per-interval files (month, season, year)
@@ -142,22 +142,22 @@ Fortunately there is a tool to support this kind of processing and record-keepin
 
 Early versions of the `generate_climos` script (and its R predecessor) created output files containing
 means for all intervals (month, season, year) concatenated into a single file. This is undesirable
-for a couple of reasons: 
+for a couple of reasons:
 
-* Pragmatic: `ncWMS2` rejects NetCDF files with non-monotonic dimensions. 
+* Pragmatic: `ncWMS2` rejects NetCDF files with non-monotonic dimensions.
   Merged files have a non-monotonic time dimension.
-  
-* Formal: The 3 different means, i.e., means over 3 different intervals (month, season, year), 
-  are formally different estimates of random variables with different time dimensions. 
-  We could represent this easily enough in a single NetCDF file, with 3 distinct variables 
-  each with a distinct time dimension, but judged it as introducing too much complication. 
+
+* Formal: The 3 different means, i.e., means over 3 different intervals (month, season, year),
+  are formally different estimates of random variables with different time dimensions.
+  We could represent this easily enough in a single NetCDF file, with 3 distinct variables
+  each with a distinct time dimension, but judged it as introducing too much complication.
   We prefer to have a separate file per averaging interval, with one time dimension per file.
-  
+
 This script takes as input one or more climo means files and splits each into separate files,
 one file per mean interval (month, season, year) in the input file.
 
 The input file is not modified.
-  
+
 #### Usage
 
 ```bash
@@ -168,11 +168,11 @@ Filenames are automatically generated for the split files.
 These filenames conform to the extended CMOR syntax defined in the
 [PCIC metadata standard ](https://pcic.uvic.ca/confluence/display/CSG/PCIC+metadata+standard+for+downscaled+data+and+hydrology+modelling+data).
 
-If the input file is named according to standard, then the new filenames are the same as the input filename, 
-with the `<frequency>` component (typically `msaClim`) 
+If the input file is named according to standard, then the new filenames are the same as the input filename,
+with the `<frequency>` component (typically `msaClim`)
 replaced with the values `mClim` (monthly means), `sClim` (seasonal means), `aClim` (annual means).
 
-Output files are placed in the directory specified in the `-o` argument. 
+Output files are placed in the directory specified in the `-o` argument.
 This directory is created if it does not exist.
 
 ### `update_metadata`: Update metadata in a NetCDF file
@@ -187,14 +187,14 @@ attributes. There are no really convenient tools for updating metadata, so we ro
 update_metadata -u updates ncfile
 ```
 
-`update_metadata` takes an option (`-u`) and an argument: 
+`update_metadata` takes an option (`-u`) and an argument:
 
 * `-u`: the filepath of an updates file that specifies what to do to the metdata it finds in the NetCDF file
 * argument: the filepath of a NetCDF file to update
 
 #### Updates file: specifying updates to make
 
-`update_metadata` can update the global attributes and/or the attributes of variables in a NetCDF file. 
+`update_metadata` can update the global attributes and/or the attributes of variables in a NetCDF file.
 Three update operations are available (detailed below): delete attribute, set attribute value, rename attribute.
 
 Updates to be made are specified in a separate updates file.
@@ -203,9 +203,9 @@ You only need to know a couple of things about YAML and how we employ it to use 
 
 * Updates are specified with `key: value` syntax. A space must separate the colon from the value.
 * Indentation matters (see next item). Indentation must be consistent within a block.
-* There are two levels of indentation. 
-  * The first (unindented) level specifies what group of attributes is to be updated. 
-    * The key `global` specifies global attributes. 
+* There are two levels of indentation.
+  * The first (unindented) level specifies what group of attributes is to be updated.
+    * The key `global` specifies global attributes.
     * Any other key is assumed to be the name of a variable whose attributes are to be updated.
     * The *value* for a first-level key is the indented block below it.
   * The second (indented) level specifies the attribute and the change to be made to it.
@@ -247,7 +247,7 @@ global-or-variable-name:
     - name: value
 ```
 
-Note: This script is clever (courtesy of YAML cleverness) about the data type of the value specified. 
+Note: This script is clever (courtesy of YAML cleverness) about the data type of the value specified.
 
 * If you provide a value that looks like an integer, it is interpreted as an integer.
 * If you provide a value that looks like a float, it is interpreted as a float.
@@ -258,11 +258,11 @@ More details on the [Wikipedia YAML page](https://en.wikipedia.org/wiki/YAML#Adv
 
 ##### Set attribute to value of Python expression
 
-Set the value of the attribute `name` to the value of the Python expression `expression`, evaluated in a 
-context that includes the values of all NetCDF attributes as variables, and with a selection of 
+Set the value of the attribute `name` to the value of the Python expression `expression`, evaluated in a
+context that includes the values of all NetCDF attributes as variables, and with a selection of
 additional custom functions available.
 
-All standard Python functions are available -- including dangerous ones like `os.remove`, 
+All standard Python functions are available -- including dangerous ones like `os.remove`,
 so don't get too clever.
 
 For convenience, the values of all attributes of the target object are made available as local variables
@@ -315,14 +315,14 @@ global-or-variable-name:
     - newname: <-oldname
 ```
 
-Note: The special sequence `<-` after the colon indicates renaming. 
+Note: The special sequence `<-` after the colon indicates renaming.
 This means that you can't set an attribute with a value that begins with `<-`. Sorry.
 
 ##### Example updates file:
 
 ```yaml
 global:
-    foo: 
+    foo:
     bar: 42
     baz: <-qux
 
@@ -334,7 +334,7 @@ or (to process in order)
 
 ```yaml
 global:
-    - foo: 
+    - foo:
     - bar: 42
     - baz: <-qux
 
@@ -344,7 +344,7 @@ temperature:
 
 This file causes a NetCDF file to be updated in the following way:
 
-Global attributes: 
+Global attributes:
 * delete global attribute `foo`
 * set global attribute `bar` to (integer) `42`
 * rename global attribute `qux` to `baz`
@@ -355,7 +355,7 @@ Attributes of variable named `temperature`:
 ### `decompose_flow_vectors`: create normalized unit vector fields from a VIC routing file
 
 #### Purpose:
-ncWMS can display vector fields as map rasters, if the vector data is arranged inside the netCDF file as two grids, one representing the eastward vectors at each grid location, the other representing northward vectors at each grid location. 
+ncWMS can display vector fields as map rasters, if the vector data is arranged inside the netCDF file as two grids, one representing the eastward vectors at each grid location, the other representing northward vectors at each grid location.
 
 VIC parametrization files encode flow direction using a number from 1 to 8. This script decomposes the flow direction vectors in a VIC parametrization file into northward and eastward vector arrays for ncWMS display.
 
@@ -377,8 +377,22 @@ VIC routing directional vector values:
 
 Writes to `outfile` a netCDF containing normalized vector arrays generated from `variable` in `infile`. Does not change `infile` or copy any other variables or axes to `outfile`.
 
+### `generate_prsn`: Generate snowfall file
+
+#### Purpose:
+
+To generate a file containing the `snowfall_flux` from input files of precipiation, tasmin and tasmax.  
+
+#### Usage:
+
+```bash
+# Metadata check
+generate_prsn --metadata-check -p prec_file -n tasmin_file -x tasmax_file -o outdir
+
+# File generation
+generate_prsn -p prec_file -n tasmin_file -x tasmax_file -o outdir
+```
 
 ## Indexing climatological output files
 
 Indexing is done using scripts in the [modelmeta](https://github.com/pacificclimate/modelmeta) package.
-
