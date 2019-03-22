@@ -181,14 +181,14 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         unique_shape(variables)
 
 
-def process_to_prsn(pr, tasmin, tasmax, max_len, output_dataset, freezing):
+def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
     '''Process precipitation data into snowfall data
 
        This method takes a precipitation, tasmin and tasmax file and uses them
        to produce a snowfall file.  Using a mean of the temperature files the
-       script will look through all the cells in the datacube and mask any
-       cells that are not freezing.  This mask applies to the precipiation file
-       and thus we are left with cells where it was cold enough for snow.
+       script will look through all the cells in the datacube and 0 any cells
+       that are not freezing.  This mask applies to the precipiation file and
+       thus we are left with cells where it was cold enough for snow.
 
        The input files are read in small chunks to avoid filling up all
        available memory and crashing the script.  Size refers to the chunk size
@@ -199,14 +199,13 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_dataset, freezing):
             pr (Variable): Variable object for precipitation
             tasmin (Variable): Variable object for tasmin
             tasmax (Variable): Variable object for tasmax
-            max_len (int): The length of the precipitation variable to be used
-                as the loop condition
             output_dataset (CFDataset): Dataset for prsn output
             freezing (float): Freezing temperature
     '''
     # TODO: Figure out a way to dynamically choose chunksize
     size = 100
     start = 0
+    max_len = len(pr)
     end = size
 
     if size > max_len:
@@ -221,9 +220,7 @@ def process_to_prsn(pr, tasmin, tasmax, max_len, output_dataset, freezing):
         tasmax_data = tasmax[start:end]
 
         means = np.mean([tasmin_data, tasmax_data], axis=0)
-        prsn_data = np.where(means < freezing, pr_data, np.nan)
-
-        logger.debug('Write prsn data to netCDF')
+        prsn_data = np.where(means < freezing, pr_data, 0)
         output_dataset.variables['prsn'][start:end] = prsn_data
 
         start = end
@@ -267,10 +264,9 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     logger.info('Processing files in chunks')
     # by now we know that tasmin/tasmax have the same units
     freezing = determine_freezing(tasmin_variable.units)
-    max_len = len(pr_variable)
     with CFDataset(output_filepath, mode='r+') as output_dataset:
         process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
-                        max_len, output_dataset, freezing)
+                        output_dataset, freezing)
 
     logger.info('Output at: {}'.format(output_filepath))
     logger.info('Complete')
