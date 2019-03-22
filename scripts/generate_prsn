@@ -7,7 +7,7 @@ from nchelpers import CFDataset
 
 
 def main(args):
-    if args.metadata_check:
+    if args.dry_run:
         logger.info('Metadata Check')
         for filepath in [args.prec, args.tasmin, args.tasmax]:
             logger.info('')
@@ -29,7 +29,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Create precipitation as snow data from pr, tasmin, tasmax')
-    parser.add_argument('-m', '--metadata-check', dest='metadata_check', action='store_true')
+    parser.add_argument('-d', '--dry-run', dest='dry_run', action='store_true')
     parser.add_argument('-p', '--prec', required=True, help='Precipitation file to process')
     parser.add_argument('-n', '--tasmin', required=True, help='Tasmin file to process')
     parser.add_argument('-x', '--tasmax', required=True, help='Tasmax file to process')
