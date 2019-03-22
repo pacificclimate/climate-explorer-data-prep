@@ -10,7 +10,7 @@ from conftest import get_dataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
     determine_freezing, create_prsn_netcdf_from_source, \
     create_filepath_from_source, has_required_vars, matching_datasets, \
-    matching_temperature_units, check_pr_units
+    matching_temperature_units, check_pr_units, process_to_prsn
 
 
 @pytest.mark.parametrize('arrays', [
@@ -145,3 +145,24 @@ def test_check_pr_units(tiny_dataset):
 ], indirect=['fake_dataset'])
 def test_check_pr_units_bad_unit(fake_dataset):
     assert not check_pr_units(fake_dataset)
+
+
+@pytest.mark.parametrize('pr, tasmin, tasmax', [
+    ('daily_pr', 'daily_tasmin', 'daily_tasmax')
+])
+@pytest.mark.parametrize('fake_dataset', [
+    {}
+], indirect=['fake_dataset'])
+def test_process_to_prsn(pr, tasmin, tasmax, fake_dataset):
+    pr_dataset = get_dataset(pr)
+    create_prsn_netcdf_from_source(pr_dataset, fake_dataset)
+
+    pr_var = pr_dataset.variables['pr']
+    tasmin_var = get_dataset(tasmin).variables['tasmin']
+    tasmax_var = get_dataset(tasmax).variables['tasmax']
+    process_to_prsn(pr_var, tasmin_var, tasmax_var, fake_dataset, 273.15)
+
+    result = fake_dataset.variables['prsn'][:]
+    result = np.where(result != 0)
+    for array in result:
+        assert len(array) == 0
