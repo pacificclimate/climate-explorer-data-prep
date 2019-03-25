@@ -59,7 +59,11 @@ def create_prsn_netcdf_from_source(src, dst):
         dst.createDimension(name, len(dim) if not dim.isunlimited() else None)
 
     # Copy the globals
-    dst.setncatts({attr:src.getncattr(attr) for attr in src.ncattrs()})
+    unwanted_globals = [
+        'history',
+    ]
+    dst.setncatts({attr:src.getncattr(attr)
+                   for attr in src.ncattrs() if attr not in unwanted_globals})
 
     # Create the variables in the file
     for name, var in src.variables.items():
