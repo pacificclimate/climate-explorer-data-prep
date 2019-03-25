@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 
 def unique_shape(arrays):
     '''Ensure the arrays are the same shape'''
-    shapes = set(map(np.shape, arrays))
+    shapes = {a.shape for a in arrays}
     if not len(shapes) == 1:
         logger.warning('Arrays are not the same shape {}'.format(shapes))
         return False
@@ -34,7 +34,7 @@ def is_unique_value(values):
     '''Given a list transform into set and ensure there is only one unique
        value.
     '''
-    return len(set(values)) == 1
+    return np.unique(values) == 1
 
 
 def determine_freezing(unit):
@@ -173,12 +173,19 @@ def check_pr_units(pr):
 
 
 def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
-    '''Perform all pre-processing checks'''
-    return matching_datasets([pr, tasmin, tasmax]) and \
-        has_required_vars([pr, tasmin, tasmax], required_vars) and \
-        matching_temperature_units(tasmin, tasmax) and \
-        check_pr_units(pr) and \
-        unique_shape(variables)
+    '''Perform all pre-processing checks, if any check(s) have failed raise Exception'''
+    checks = {
+        'matching_datasets': matching_datasets([pr, tasmin, tasmax]),
+        'has_required_vars': has_required_vars([pr, tasmin, tasmax], required_vars),
+        'matching_temperature_units': matching_temperature_units(tasmin, tasmax),
+        'check_pr_units': check_pr_units(pr),
+        'unique_shape': unique_shape(variables)
+    }
+    failures = [check for check, result in checks.items() if not result]
+    if failures:
+        for failure in failures:
+            logger.exception('{} check failed'.format(failure))
+        raise Exception('Pre-process checks have failed')
 
 
 def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
@@ -252,9 +259,8 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     logger.info('Conducting pre-process checks')
     variables = [pr_variable, tasmin_variable, tasmax_variable]
     required_vars = ['pr', 'tasmin', 'tasmax']
-    if not preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset,
-                             variables, required_vars):
-        raise Exception('Pre-process checks have failed.')
+    preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset, variables,
+                      required_vars):
 
     logger.info('Creating outfile')
     output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
