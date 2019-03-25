@@ -5,6 +5,7 @@ import os
 from statistics import mean
 from math import floor
 from nchelpers import CFDataset
+from pint import UnitRegistry
 
 from dp.units_helpers import Unit
 
@@ -31,17 +32,21 @@ def unique_shape(arrays):
 
 
 def is_unique_value(values):
-    '''Given a list transform into set and ensure there is only one unique
-       value.
-    '''
-    return np.unique(values) == 1
+    '''Given a list ensure there is only one unique value'''
+    return np.unique(values).size == 1
 
 
 def determine_freezing(unit):
     '''Given a unit determine which temperature describes freezing'''
-    freezing = 0.0
-    if unit.lower() == 'k':
-        freezing = 273.15
+    ureg = UnitRegistry()
+    Q_ = ureg.Quantity
+    freezing = Q_(0.0, ureg.degC)
+
+    temp_unit = ureg.parse_units(unit)
+    logger.info('Temperature units: {}'.format(temp_unit))
+    if temp_unit != 'degC':
+        freezing.to(temp_unit)
+
     return freezing
 
 
@@ -64,11 +69,10 @@ def create_prsn_netcdf_from_source(src, dst):
         dst.variables[name].setncatts({attr:var.getncattr(attr) for attr in var.ncattrs()})
 
         # we will be replacing pr data with prsn data
-        if name != 'pr':
-            logger.debug('Copying {}'.format(name))
-            dst.variables[name][:] = src.variables[name][:]
-        else:
+        if name == 'pr':
             continue
+        logger.debug('Copying {}'.format(name))
+        dst.variables[name][:] = src.variables[name][:]
 
 
     # change pr metadata to prsn equivalents
@@ -260,7 +264,7 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
     variables = [pr_variable, tasmin_variable, tasmax_variable]
     required_vars = ['pr', 'tasmin', 'tasmax']
     preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset, variables,
-                      required_vars):
+                      required_vars)
 
     logger.info('Creating outfile')
     output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
