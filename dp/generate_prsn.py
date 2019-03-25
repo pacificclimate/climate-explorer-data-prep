@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
+ureg = UnitRegistry()
+Q_ = ureg.Quantity
+
+
+def chunk_generator(max_len):
+    '''Yield the start and end indices for chunking through a given array lenght'''
+    size = 100
+    start = 0
+    end = size
+
+    if size > max_len:
+        size = max_len
+
+    while(start < max_len):
+        if end > max_len:
+            end = max_len
+
+        yield start, end
+
+        start = end
+        end += size
+
 
 def unique_shape(arrays):
     '''Ensure the arrays are the same shape'''
@@ -38,8 +60,6 @@ def is_unique_value(values):
 
 def determine_freezing(unit):
     '''Given a unit determine which temperature describes freezing'''
-    ureg = UnitRegistry()
-    Q_ = ureg.Quantity
     freezing = Q_(0.0, ureg.degC)
 
     temp_unit = ureg.parse_units(unit)
@@ -156,15 +176,27 @@ def matching_datasets(datasets):
 
 
 def matching_temperature_units(tasmin, tasmax):
-    '''Ensure the temperature datasets have matching units'''
-    min_units = tasmin.variables['tasmin'].units
-    max_units = tasmax.variables['tasmax'].units
+    '''Check if temperature datasets have matching units,
+       if not convert tasmax units
+    '''
+    min_units = ureg.parse_units(tasmin.units)
+    max_units = ureg.parse_units(tasmax.units)
+
     if not is_unique_value([min_units, max_units]):
-        logger.warning('Temperature units do not match: tasmin: {} tasmax: {}'
-                       .format(min_units, max_units))
-        return False
+        logger.warning('Converting tasmax units: {} to match tasmin units: {}'
+                       .format(max_units, min_units))
+
+        # tasmax units converted to tasmin units
+        converted_tasmax = np.zeros(np.shape(tasmax))
+        for start, end in chunk_generator(len(tasmax)):
+            try:
+                converted_var[start:end] = (tasmax[start:end] * Q_(1.0, max_units)).to(min_units).magnitude
+            except:
+                raise Exception('Error occured while converting units')
+        return converted_tasmax
     else:
-        return True
+        logger.info('Units match')
+        return tasmax
 
 
 def check_pr_units(pr):
@@ -190,7 +222,6 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
     checks = {
         'matching_datasets': matching_datasets([pr, tasmin, tasmax]),
         'has_required_vars': has_required_vars([pr, tasmin, tasmax], required_vars),
-        'matching_temperature_units': matching_temperature_units(tasmin, tasmax),
         'check_pr_units': check_pr_units(pr),
         'unique_shape': unique_shape(variables)
     }
@@ -222,19 +253,7 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
             output_dataset (CFDataset): Dataset for prsn output
             freezing (float): Freezing temperature
     '''
-    # TODO: Figure out a way to dynamically choose chunksize
-    size = 100
-    start = 0
-    max_len = len(pr)
-    end = size
-
-    if size > max_len:
-        size = max_len
-
-    while(start < max_len):
-        if end > max_len:
-            end = max_len
-
+    for start, end in chunk_generator(len(pr)):
         pr_data = pr[start:end]
         tasmin_data = tasmin[start:end]
         tasmax_data = tasmax[start:end]
@@ -242,9 +261,6 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
         means = np.mean([tasmin_data, tasmax_data], axis=0)
         prsn_data = np.where(means < freezing, pr_data, 0)
         output_dataset.variables['prsn'][start:end] = prsn_data
-
-        start = end
-        end += size
 
 
 def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, output_file=None):
@@ -274,6 +290,9 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, ou
     required_vars = ['pr', 'tasmin', 'tasmax']
     preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset, variables,
                       required_vars)
+
+    logger.info('Checking temperature units')
+    tasmax_variable = matching_temperature_units(tasmin_variable, tasmax_variable)
 
     logger.info('Creating outfile')
     if output_file:
