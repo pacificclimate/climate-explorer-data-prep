@@ -92,6 +92,14 @@ def create_prsn_netcdf_from_source(src, dst):
             prsn_var.delncattr(item)
 
 
+def custom_filepath(directory, file):
+    '''Check if directory exists and return the filepath'''
+    if not os.path.exists(os.path.dirname(directory)):
+        os.makedirs(os.path.dirname(directory))
+
+    return os.path.join(directory, file)
+
+
 def create_filepath_from_source(source, new_var, outdir):
     '''Using the source cmor_filename build a new output filepath with new_var
        and output directory.
@@ -102,10 +110,7 @@ def create_filepath_from_source(source, new_var, outdir):
     for var in rest:
         suffix += '_' + var
 
-    if not os.path.exists(os.path.dirname(outdir)):
-        os.makedirs(os.path.dirname(outdir))
-
-    return os.path.join(outdir, new_var + suffix)
+    return custom_filepath(outdir, new_var + suffix)
 
 
 def has_required_vars(datasets, required_vars):
@@ -242,7 +247,7 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
         end += size
 
 
-def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
+def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, output_file=None):
     '''Generate precipiation as snow data using pr, tasmin and tasmax.
 
        Parameters:
@@ -271,7 +276,11 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir):
                       required_vars)
 
     logger.info('Creating outfile')
-    output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
+    if output_file:
+        output_filepath = custom_filepath(outdir, output_file)
+    else:
+        output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
+
     with CFDataset(output_filepath, mode='w') as output_dataset:
         create_prsn_netcdf_from_source(pr_dataset, output_dataset)
 

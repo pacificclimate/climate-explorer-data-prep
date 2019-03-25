@@ -24,7 +24,7 @@ def main(args):
                         logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
                 logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
     else:
-        generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir)
+        generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir, args.output_file)
 
 
 if __name__ == '__main__':
@@ -34,6 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--tasmin', required=True, help='Tasmin file to process')
     parser.add_argument('-x', '--tasmax', required=True, help='Tasmax file to process')
     parser.add_argument('-o', '--outdir', required=True, help='Output directory')
+    parser.add_argument('-f', '--output-file', dest='output_file', default=None,
+                        help='Optional custom name of output file')
     parser.add_argument('-l', '--loglevel', help='Logging level',
                         choices=['INFO', 'DEBUG', 'WARNING', 'ERROR'], default='INFO')
     args = parser.parse_args()
