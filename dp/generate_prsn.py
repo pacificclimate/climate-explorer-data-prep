@@ -122,13 +122,13 @@ def has_required_vars(datasets, required_vars):
         for var in dataset.variables:
             unique_vars.add(var)
 
-    for required_var in required_vars:
-        if required_var not in unique_vars:
-            logger.warning('Files do not contain required variables. required: {} have: {}'
-                           .format(required_vars, unique_vars))
-            return False
-
-    return True
+    required_vars = set(required_vars)
+    if required_vars.intersection(unique_vars) == required_vars:
+        return True
+    else:
+        logger.warning('Files do not contain required variables. required: {} have: {}'
+                       .format(required_vars, unique_vars))
+        return False
 
 
 def matching_datasets(datasets):
