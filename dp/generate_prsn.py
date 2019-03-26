@@ -24,9 +24,8 @@ ureg = UnitRegistry()
 Q_ = ureg.Quantity
 
 
-def chunk_generator(max_len):
+def chunk_generator(size, max_len):
     '''Yield the start and end indices for chunking through a given array length'''
-    size = 100
     start = 0
     end = size
 
@@ -62,12 +61,11 @@ def determine_freezing(unit):
     '''Given a unit determine which temperature describes freezing'''
     freezing = Q_(0.0, ureg.degC)
 
-    temp_unit = ureg.parse_units(unit)
-    logger.info('Temperature units: {}'.format(temp_unit))
+    temp_unit = str(ureg.parse_units(unit))
     if temp_unit != 'degC':
-        freezing.to(temp_unit)
+        freezing = freezing.to(temp_unit)
 
-    return freezing
+    return freezing.magnitude
 
 
 def create_prsn_netcdf_from_source(src, dst):
@@ -175,7 +173,7 @@ def matching_datasets(datasets):
     return True
 
 
-def matching_temperature_units(tasmin, tasmax):
+def matching_temperature_units(tasmin, tasmax, chunk_size):
     '''Check if temperature datasets have matching units,
        if not convert tasmax units
     '''
@@ -188,7 +186,7 @@ def matching_temperature_units(tasmin, tasmax):
 
         # tasmax units converted to tasmin units
         converted_tasmax = np.zeros(np.shape(tasmax))
-        for start, end in chunk_generator(len(tasmax)):
+        for start, end in chunk_generator(chunk_size, len(tasmax)):
             try:
                 converted_var[start:end] = (tasmax[start:end] * Q_(1.0, max_units)).to(min_units).magnitude
             except:
@@ -232,7 +230,7 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         raise Exception('Pre-process checks have failed')
 
 
-def process_to_prsn(pr, tasmin, tasmax, output_dataset):
+def process_to_prsn(pr, tasmin, tasmax, output_dataset, chunk_size):
     '''Process precipitation data into snowfall data
 
        This method takes a precipitation, tasmin and tasmax file and uses them
@@ -251,9 +249,10 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset):
             tasmin (Variable): Variable object for tasmin
             tasmax (Variable): Variable object for tasmax
             output_dataset (CFDataset): Dataset for prsn output
+            chunk_size (int): Number of timeslices to be read/written at a time
     '''
     freezing = determine_freezing(tasmin.units)
-    for start, end in chunk_generator(len(pr)):
+    for start, end in chunk_generator(chunk_size, len(pr)):
         pr_data = pr[start:end]
         tasmin_data = tasmin[start:end]
         tasmax_data = tasmax[start:end]
@@ -263,7 +262,7 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset):
         output_dataset.variables['prsn'][start:end] = prsn_data
 
 
-def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, output_file=None):
+def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, chunk_size, output_file=None):
     '''Generate precipiation as snow data using pr, tasmin and tasmax.
 
        Parameters:
@@ -292,7 +291,7 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, ou
                       required_vars)
 
     logger.info('Checking temperature units')
-    tasmax_variable = matching_temperature_units(tasmin_variable, tasmax_variable)
+    tasmax_variable = matching_temperature_units(tasmin_variable, tasmax_variable, chunk_size)
 
     logger.info('Creating outfile')
     if output_file:
@@ -306,7 +305,7 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, ou
     logger.info('Processing files in chunks')
     with CFDataset(output_filepath, mode='r+') as output_dataset:
         process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
-                        output_dataset)
+                        output_dataset, chunk_size)
 
     logger.info('Output at: {}'.format(output_filepath))
     logger.info('Complete')

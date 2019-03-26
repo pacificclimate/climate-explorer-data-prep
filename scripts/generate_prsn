@@ -24,12 +24,15 @@ def main(args):
                         logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
                 logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
     else:
-        generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir, args.output_file)
+        generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir,
+                           args.chunk_size, args.output_file)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Create precipitation as snow data from pr, tasmin, tasmax')
     parser.add_argument('-d', '--dry-run', dest='dry_run', action='store_true')
+    parser.add_argument('-c', '--chunk-size', dest='chunk_size', type=int, default=100,
+                        help='Number of time slices to be read/written at a time')
     parser.add_argument('-p', '--prec', required=True, help='Precipitation file to process')
     parser.add_argument('-n', '--tasmin', required=True, help='Tasmin file to process')
     parser.add_argument('-x', '--tasmax', required=True, help='Tasmax file to process')
