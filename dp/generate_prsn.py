@@ -43,8 +43,8 @@ def chunk_generator(size, max_len):
 
 
 def unique_shape(arrays):
-    '''Ensure the arrays are the same shape'''
-    shapes = {a.shape for a in arrays}
+    '''Ensure each array in dict is the same shape'''
+    shapes = {a.shape for a in arrays.values()}
     if not len(shapes) == 1:
         logger.warning('Arrays are not the same shape {}'.format(shapes))
         return False
@@ -57,7 +57,7 @@ def is_unique_value(values):
     return np.unique(values).size == 1
 
 
-def determine_freezing(unit):
+def pr_freezing_from_units(unit):
     '''Given a unit determine which temperature describes freezing'''
     freezing = Q_(0.0, ureg.degC)
 
@@ -136,7 +136,7 @@ def has_required_vars(datasets, required_vars):
         datasets contain all required variables.
     '''
     unique_vars = set()
-    for dataset in datasets:
+    for dataset in datasets.values():
         for var in dataset.variables:
             unique_vars.add(var)
 
@@ -150,7 +150,7 @@ def has_required_vars(datasets, required_vars):
 
 
 def matching_datasets(datasets):
-    '''Given a list of datasets, match important metadata vars to ensure the
+    '''Given a dict of datasets, match important metadata vars to ensure the
        datasets are compatible.
     '''
     required = {
@@ -161,7 +161,7 @@ def matching_datasets(datasets):
         'ensemble_member': []
     }
 
-    for dataset in datasets:
+    for dataset in datasets.values():
         for attr in required.keys():
             required[attr].append(getattr(dataset.metadata, attr))
 
@@ -197,7 +197,7 @@ def matching_temperature_units(tasmin, tasmax, chunk_size):
         return tasmax
 
 
-def check_pr_units(pr):
+def check_pr_units(pr_units):
     '''Ensure we have expected pr units'''
     valid_units = [
         Unit('kg / m**2 / s'),
@@ -205,22 +205,21 @@ def check_pr_units(pr):
         Unit('kg / d / m**2'),
         Unit('kg / m**2 / d')
     ]
-    pr_variable = pr.variables['pr']
-    pr_units = Unit.from_udunits_str(pr_variable.units)
+    units = Unit.from_udunits_str(pr_units)
 
-    if pr_units not in valid_units:
-        logger.warning('Unexpected precipitation units {}'.format(pr_units))
+    if units not in valid_units:
+        logger.warning('Unexpected precipitation units {}'.format(units))
         return False
     else:
         return True
 
 
-def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
+def preprocess_checks(datasets, variables, required_vars):
     '''Perform all pre-processing checks, if any check(s) have failed raise Exception'''
     checks = {
-        'matching_datasets': matching_datasets([pr, tasmin, tasmax]),
-        'has_required_vars': has_required_vars([pr, tasmin, tasmax], required_vars),
-        'check_pr_units': check_pr_units(pr),
+        'matching_datasets': matching_datasets(datasets),
+        'has_required_vars': has_required_vars(datasets, required_vars),
+        'check_pr_units': check_pr_units(variables['pr'].units),
         'unique_shape': unique_shape(variables)
     }
     failures = [check for check, result in checks.items() if not result]
@@ -230,7 +229,7 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         raise Exception('Pre-process checks have failed')
 
 
-def process_to_prsn(pr, tasmin, tasmax, output_dataset, chunk_size):
+def process_to_prsn(variables, output_dataset, chunk_size):
     '''Process precipitation data into snowfall data
 
        This method takes a precipitation, tasmin and tasmax file and uses them
@@ -245,67 +244,52 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset, chunk_size):
        (100, all lon, all lat).
 
        Parameters:
-            pr (Variable): Variable object for precipitation
-            tasmin (Variable): Variable object for tasmin
-            tasmax (Variable): Variable object for tasmax
+            variables (dict): Dictionary containing three Variable objects (pr, tasmin, tasmax)
             output_dataset (CFDataset): Dataset for prsn output
             chunk_size (int): Number of timeslices to be read/written at a time
     '''
-    freezing = determine_freezing(tasmin.units)
-    for start, end in chunk_generator(chunk_size, len(pr)):
-        pr_data = pr[start:end]
-        tasmin_data = tasmin[start:end]
-        tasmax_data = tasmax[start:end]
-
-        means = np.mean([tasmin_data, tasmax_data], axis=0)
-        prsn_data = np.where(means < freezing, pr_data, 0)
+    freezing = pr_freezing_from_units(variables['tasmin'].units)
+    for start, end in chunk_generator(chunk_size, len(variables['pr'])):
+        chunk_data = {varname: data[start:end] for varname, data in variables.items()}
+        means = np.mean([chunk_data['tasmin'], chunk_data['tasmax']], axis=0)
+        prsn_data = np.where(means < freezing, chunk_data['pr'], 0)
         output_dataset.variables['prsn'][start:end] = prsn_data
 
 
-def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, chunk_size, output_file=None):
+def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
     '''Generate precipiation as snow data using pr, tasmin and tasmax.
 
        Parameters:
-            pr_filepath (str): The filepath to desired precipiation data
-            tasmin_filepath (str): The filepath to desired tasmin data
-            tasmax_filepath (str): The filepath to desired tasmax data
+            filepaths (dict): Dictionary containin the three filepaths
+            chunk_size (int): Number of timeslices to be read/written
             outdir (str): Output directory
+            output_file (str): Optional custom output filename
     '''
-    for filepath in [pr_filepath, tasmin_filepath, tasmax_filepath]:
+    datasets = {varname: CFDataset(filepath) for varname, filepath in filepaths.items()}
+    variables = {varname: datasets[varname].variables[varname] for varname in filepaths.keys()}
+
+    for filepath in filepaths.values():
         logger.info('Retrieving file: {}'.format(filepath))
 
-    # datasets
-    pr_dataset = CFDataset(pr_filepath)
-    tasmin_dataset = CFDataset(tasmin_filepath)
-    tasmax_dataset = CFDataset(tasmax_filepath)
-
-    # variables
-    pr_variable = pr_dataset.variables['pr']
-    tasmin_variable = tasmin_dataset.variables['tasmin']
-    tasmax_variable = tasmax_dataset.variables['tasmax']
-
     logger.info('Conducting pre-process checks')
-    variables = [pr_variable, tasmin_variable, tasmax_variable]
-    required_vars = ['pr', 'tasmin', 'tasmax']
-    preprocess_checks(pr_dataset, tasmin_dataset, tasmax_dataset, variables,
-                      required_vars)
+    required_vars = filepaths.keys()
+    preprocess_checks(datasets, variables, required_vars)
 
     logger.info('Checking temperature units')
-    tasmax_variable = matching_temperature_units(tasmin_variable, tasmax_variable, chunk_size)
+    tasmax_variable = matching_temperature_units(variables['tasmin'], variables['tasmax'], chunk_size)
 
     logger.info('Creating outfile')
     if output_file:
         output_filepath = custom_filepath(outdir, output_file)
     else:
-        output_filepath = create_filepath_from_source(pr_dataset, 'prsn', outdir)
+        output_filepath = create_filepath_from_source(datasets['pr'], 'prsn', outdir)
 
     with CFDataset(output_filepath, mode='w') as output_dataset:
-        create_prsn_netcdf_from_source(pr_dataset, output_dataset)
+        create_prsn_netcdf_from_source(datasets['pr'], output_dataset)
 
     logger.info('Processing files in chunks')
     with CFDataset(output_filepath, mode='r+') as output_dataset:
-        process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
-                        output_dataset, chunk_size)
+        process_to_prsn(variables, output_dataset, chunk_size)
 
     logger.info('Output at: {}'.format(output_filepath))
     logger.info('Complete')

@@ -24,8 +24,12 @@ def main(args):
                         logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
                 logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
     else:
-        generate_prsn_file(args.prec, args.tasmin, args.tasmax, args.outdir,
-                           args.chunk_size, args.output_file)
+        filepaths = {
+            'pr': args.prec,
+            'tasmin': args.tasmin,
+            'tasmax': args.tasmax
+        }
+        generate_prsn_file(filepaths, args.chunk_size, args.outdir, args.output_file)
 
 
 if __name__ == '__main__':
