@@ -8,25 +8,26 @@ from pkg_resources import resource_filename
 from nchelpers import CFDataset
 from conftest import get_dataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
-    determine_freezing, create_prsn_netcdf_from_source, \
+    pr_freezing_from_units, create_prsn_netcdf_from_source, \
     create_filepath_from_source, has_required_vars, matching_datasets, \
     matching_temperature_units, check_pr_units, process_to_prsn
 
 
 @pytest.mark.parametrize('arrays', [
-    ([np.arange(10).reshape(2, 5), np.arange(10).reshape(2, 5)]),
-    ([np.arange(100).reshape(2, 5, 10), np.arange(100).reshape(2, 5, 10)])
+    ({'shape1': np.arange(10).reshape(2, 5), 'shape2': np.arange(10).reshape(2, 5)}),
+    ({'shape1': np.arange(100).reshape(2, 5, 10), 'shape2': np.arange(100).reshape(2, 5, 10)})
 ])
 def test_unique_shape(arrays):
     assert unique_shape(arrays)
 
 
 @pytest.mark.parametrize('arrays', [
-    ([np.arange(10).reshape(2, 5), np.arange(10).reshape(10, 1)]),
-    ([np.arange(100).reshape(2, 5, 10), np.arange(100).reshape(10, 10)])
+    ({'shape1': np.arange(10).reshape(2, 5), 'shape2': np.arange(10).reshape(10, 1)}),
+    ({'shape1': np.arange(100).reshape(2, 5, 10), 'shape2': np.arange(100).reshape(10, 10)})
 ])
 def test_unique_shape_different_shape(arrays):
     assert not unique_shape(arrays)
+
 
 @pytest.mark.parametrize('values', [
     ([1, 1, 1]),
@@ -52,8 +53,8 @@ def test_is_unique_value_not_unique(values):
     ('k', 273.15),
     ('K', 273.15)
 ])
-def test_determine_freezing(unit, expected):
-    assert determine_freezing(unit) == expected
+def test_pr_freezing_from_units(unit, expected):
+    assert pr_freezing_from_units(unit) == expected
 
 
 @pytest.mark.parametrize('tiny_dataset', [
