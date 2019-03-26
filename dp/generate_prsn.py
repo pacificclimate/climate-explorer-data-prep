@@ -42,6 +42,25 @@ def chunk_generator(size, max_len):
         end += size
 
 
+
+def dry_run(filepaths):
+    logger.info('Dry Run')
+    for filepath in filepaths.values():
+        logger.info('')
+        logger.info('File: {}'.format(filepath))
+        try:
+            dataset = CFDataset(filepath)
+        except Exception as e:
+            logger.exception('{}: {}'.format(e.__class__.__name__, e))
+
+        for attr in 'project model institute experiment ensemble_member'.split():
+            try:
+                logger.info('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+            except Exception as e:
+                logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
+        logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+
+
 def unique_shape(arrays):
     '''Ensure each array in dict is the same shape'''
     shapes = {a.shape for a in arrays.values()}
@@ -287,7 +306,7 @@ def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
     with CFDataset(output_filepath, mode='w') as output_dataset:
         create_prsn_netcdf_from_source(datasets['pr'], output_dataset)
 
-    logger.info('Processing files in chunks')
+    logger.info('Processing files by {} timeslice chunks'.format(chunk_size))
     with CFDataset(output_filepath, mode='r+') as output_dataset:
         process_to_prsn(variables, output_dataset, chunk_size)
 

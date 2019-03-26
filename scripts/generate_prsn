@@ -2,33 +2,19 @@
 from argparse import ArgumentParser
 import logging
 
-from dp.generate_prsn import logger, generate_prsn_file
+from dp.generate_prsn import logger, generate_prsn_file, dry_run
 from nchelpers import CFDataset
 
 
 def main(args):
+    filepaths = {
+        'pr': args.prec,
+        'tasmin': args.tasmin,
+        'tasmax': args.tasmax
+    }
     if args.dry_run:
-        logger.info('Metadata Check')
-        for filepath in [args.prec, args.tasmin, args.tasmax]:
-            logger.info('')
-            logger.info('File: {}'.format(filepath))
-            try:
-                dataset = CFDataset(filepath)
-            except Exception as e:
-                logger.info('{}: {}'.format(e.__class__.__name__, e))
-            else:
-                for attr in 'project model institute experiment ensemble_member'.split():
-                    try:
-                        logger.info('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
-                    except Exception as e:
-                        logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-                logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+        dry_run(filepaths)
     else:
-        filepaths = {
-            'pr': args.prec,
-            'tasmin': args.tasmin,
-            'tasmax': args.tasmax
-        }
         generate_prsn_file(filepaths, args.chunk_size, args.outdir, args.output_file)
 
 
