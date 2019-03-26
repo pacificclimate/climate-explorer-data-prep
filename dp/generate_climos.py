@@ -113,67 +113,62 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     # information, due to uncertainity about whether the continuous periods described
     # in shorter periods to be aggregated coincide.
 
-    # TODO - assign variable "thresholds" to a category.
-    # TODO - check hydrological modeling variables
-    # TODO - determine this from incoming cell methods, not a giant hardcoded list?
-    class Vtype(Enum):
-        POINT = 1
-        COUNT = 2
-        DURATION = 3
+    # TODO - assign variable "thresholds" to a category
+    # TODO - determine this from incoming cell methods, not a giant hardcoded list
     
     variable_types = {
         # Standard climate variables
-        'tasmin': Vtype.POINT,
-        'tasmax': Vtype.POINT, 
-        'pr': Vtype.POINT,
+        'tasmin': 'point',
+        'tasmax': 'point', 
+        'pr': 'point',
         # Hydrological modelling variables
-        'BASEFLOW': Vtype.POINT,
-        'EVAP': Vtype.POINT,
-        'GLAC_AREA_BAND': Vtype.POINT,
-        'GLAC_MBAL_BAND': Vtype.POINT,
-        'GLAC_OUTFLOW': Vtype.POINT,
-        'PET_NATVEG': Vtype.POINT,
-        'PREC': Vtype.POINT,
-        'RAINF': Vtype.POINT,
-        'RUNOFF': Vtype.POINT,
-        'SNOW_MELT': Vtype.POINT,
-        'SOIL_MOIST_TOT': Vtype.POINT,
-        'SWE': Vtype.POINT,
-        'SWE_BAND': Vtype.POINT,
-        'TRANSP_VEG': Vtype.POINT,
+        'BASEFLOW': 'point',
+        'EVAP': 'point',
+        'GLAC_AREA_BAND': 'point',
+        'GLAC_MBAL_BAND': 'point',
+        'GLAC_OUTFLOW': 'point',
+        'PET_NATVEG': 'point',
+        'PREC': 'point',
+        'RAINF': 'point',
+        'RUNOFF': 'point',
+        'SNOW_MELT': 'point',
+        'SOIL_MOIST_TOT': 'point',
+        'SWE': 'point',
+        'SWE_BAND': 'point',
+        'TRANSP_VEG': 'point',
         # Climdex variables
-        'cddETCCDI': Vtype.DURATION,
-        'csdiETCCDI': Vtype.DURATION,
-        'cwdETCCDI': Vtype.DURATION,
-        'dtrETCCDI': Vtype.POINT,
-        'fdETCCDI': Vtype.COUNT,
-        'gslETCCDI': Vtype.DURATION,
-        'idETCCDI': Vtype.COUNT,
-        'prcptotETCCDI': Vtype.COUNT,
-        'r10mmETCCDI': Vtype.COUNT,
-        'r1mmETCCDI': Vtype.COUNT,
-        'r20mmETCCDI': Vtype.COUNT,
-        'r95pETCCDI': Vtype.COUNT,
-        'r99pETCCDI': Vtype.COUNT,
-        'rx1dayETCCDI': Vtype.POINT,
-        'rx5dayETCCDI': Vtype.POINT,
-        'sdiiETCCDI': Vtype.POINT,
-        'suETCCDI': Vtype.COUNT,
-        'tn10pETCCDI': Vtype.POINT,
-        'tn90pETCCDI': Vtype.POINT,
-        'tnnETCCDI': Vtype.POINT,
-        'tnxETCCDI': Vtype.POINT,
-        'trETCCDI': Vtype.COUNT,
-        'tx10pETCCDI': Vtype.POINT,
-        'tx90pETCCDI': Vtype.POINT,
-        'txnETCCDI': Vtype.POINT,
-        'txxETCCDI': Vtype.POINT,
-        'wsdiETCCDI': Vtype.DURATION,
+        'cddETCCDI': 'duration',
+        'csdiETCCDI': 'duration',
+        'cwdETCCDI': 'duration',
+        'dtrETCCDI': 'point',
+        'fdETCCDI': 'count',
+        'gslETCCDI': 'duration',
+        'idETCCDI': 'count',
+        'prcptotETCCDI': 'count',
+        'r10mmETCCDI': 'count',
+        'r1mmETCCDI': 'count',
+        'r20mmETCCDI': 'count',
+        'r95pETCCDI': 'count',
+        'r99pETCCDI': 'count',
+        'rx1dayETCCDI': 'point',
+        'rx5dayETCCDI': 'point',
+        'sdiiETCCDI': 'point',
+        'suETCCDI': 'count',
+        'tn10pETCCDI': 'point',
+        'tn90pETCCDI': 'point',
+        'tnnETCCDI': 'point',
+        'tnxETCCDI': 'point',
+        'trETCCDI': 'count',
+        'tx10pETCCDI': 'point',
+        'tx90pETCCDI': 'point',
+        'txnETCCDI': 'point',
+        'txxETCCDI': 'point',
+        'wsdiETCCDI': 'duration',
         # Degree Day Variables
-        'cdd': Vtype.COUNT,
-        'fdd': Vtype.COUNT,
-        'gdd': Vtype.COUNT,
-        'hdd': Vtype.COUNT,
+        'cdd': 'count',
+        'fdd': 'count',
+        'gdd': 'count',
+        'hdd': 'count',
         }
 
     var_type = None
@@ -195,7 +190,8 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data. If no_aggregation 
         is true, only operations that generate climatologies at the exact same
-        resolution as the input dataset will be used. 
+        resolution as the input dataset will be used; otherwise data will be
+        aggregated daily -> monthly -> seasonal -> yearly.
         """
         if time_resolution == "daily" and no_aggregation:
             raise Exception("Cannot generate climatologies from a daily dataset without aggregation")
@@ -220,33 +216,23 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
                              .format(climo_ops.keys(), time_resolution))
 
     logger.info('Forming climatological {}s'.format(operation))
-    if var_type == Vtype.POINT:
+    if var_type == 'point':
         # cdo can handle these variables in a single step
         climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, False)
-    elif var_type == Vtype.COUNT:
+    elif var_type == 'count':
         # cdo's ymon* climatology-creating operations assume means for constructing subyear 
         # aggregate datasets (like making a monthly dataset from a daily dataset).
         # Count variables should be summed, not meaned, to aggregate within a year. 
         # We construct the aggregate datasets explicitly with a separate cdo command,
         # then calculate climatologies - disallowing further aggregation - from them.
-        aggregations = {}
-        if input_file.time_resolution != "daily":
-            aggregations[input_file.time_resolution] = temporal_subset
-
-        if input_file.time_resolution in ["daily", "monthly", "seasonal"]:
-            aggregations["yearly"] = cdo.yearsum(input=temporal_subset)
-        if input_file.time_resolution in ["daily", "monthly"]:
-            aggregations["seasonal"] = cdo.seasum(input=temporal_subset)
-        if input_file.time_resolution == "daily":
-            aggregations["monthly"] = cd.monsum(input=temporal_subset) 
-
+        aggregations = generate_counted_aggregates(temporal_subset, input_file)
         climo_files = []
         for res in aggregations:
             climo_files.extend(climo_outputs(res, operation, aggregations[res], True))
-    elif var_type == Vtype.DURATION:
+    elif var_type == 'duration':
         # Sub-year aggregation cannot be performed at all with these variables.
         # We can only generate climatologies at the exact resolution we receive.
-        climo_files = climo_outputs(input_file.time_resolution, temporal_subset, operation, True)
+        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, True)
     
     # Optionally concatenate values for each interval (month, season, year) into one file
     if not split_intervals:
@@ -350,44 +336,28 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
 
     return times, climo_bounds
 
-def scale_data(climo_file, variable, packed, op, constant):
-    """Multiply or divide unpacked variable data in a file by a constant.
-    Uses the cdo operations mulc or divc for unpacked data; alters the 
-    scale_factor and offset for packed data."""
-
-
-def form_means_from_sums(input_file, climo_file, t_start, t_end):
-    """Divide the climatology values by the number of years in the climatology.
-    This is for variables that represent a count of the number of times something
-    happens over a time period (day, month, year), like degree days or frost days.
-    In this case, the value of a month, season, or year is the SUM of the values
-    of the smaller units of time that make it up, but the value of a climatology
-    is the MEAN of the values of all years within it.
-    CDO doesn't have a sum-within-years / mean-between-years operations, so we
-    calculate the sum over the entire climatology, and then divide by the number
-    of years; this function does the latter
-    """
-    logger.info('Creating means from counted variable sums')
-    years = t_end.year - t_start.year + 1
-    for varname in input_file.dependent_varnames():
-        #check to see if this variable is packed.
-        var = input_file.variables[varname]
-        if hasattr(var, 'scale_factor') or hasattr(var, 'add_offset'):
-            # if the variable is packed, we don't need to chnge the data iself; 
-            # we can scale it by altering the packing constants instead.
-            scale_factor = var.scale_factor / years if hasattr(var, 'scale_factor') else 1 / years
-            offset = years * var.offset if hasattr(var, 'offset') else 0.0
-            with CFDataset(climo_file) as cf:
-                setattr(cf.variables[varname], 'scale_factor', scale_factor)
-                setattr(cf.variables[varname], 'offset', offset)
-                
-        else:
-            #if the variable isn't packed, divide the data by the # of years
-            extracted = cdo.select('name={}'.format(varname), input=climo_file)
-            extracted = cdo.divc(str(years), input=extracted)
-            climo_file = cdo.replace(input=[climo_file, extracted])
+def generate_counted_aggregates(data, input_file):
+    """Generates datasets with resolutions [monthly, seasonal, yearly] as possible
+    from a counted variable dataset with a higher time resolution. Counted datasets
+    count the number of times some event occurs over a time period, so the value
+    of a longer time period is the sum of the values of its constitutents.
+    Returns a dictionary of resolutions and datasets, including the initial
+    dataset if it is one of the target resolutions."""
     
-    return climo_file
+    logger.info("Generating intermediate aggregate files")
+    aggregations = {}
+    if input_file.time_resolution != "daily":
+        aggregations[input_file.time_resolution] = data
+
+    if input_file.time_resolution in ["daily", "monthly", "seasonal"]:
+        aggregations["yearly"] = cdo.yearsum(input=data)
+    if input_file.time_resolution in ["daily", "monthly"]:
+        aggregations["seasonal"] = cdo.seasum(input=data)
+    if input_file.time_resolution == "daily":
+        aggregations["monthly"] = cdo.monsum(input=data)
+    
+    return aggregations
+    
 
 def convert_longitude_range(climo_data):
     """Transform longitude range from [0, 360) to [-180, 180).
