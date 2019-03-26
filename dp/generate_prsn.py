@@ -25,7 +25,7 @@ Q_ = ureg.Quantity
 
 
 def chunk_generator(max_len):
-    '''Yield the start and end indices for chunking through a given array lenght'''
+    '''Yield the start and end indices for chunking through a given array length'''
     size = 100
     start = 0
     end = size
@@ -232,7 +232,7 @@ def preprocess_checks(pr, tasmin, tasmax, variables, required_vars):
         raise Exception('Pre-process checks have failed')
 
 
-def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
+def process_to_prsn(pr, tasmin, tasmax, output_dataset):
     '''Process precipitation data into snowfall data
 
        This method takes a precipitation, tasmin and tasmax file and uses them
@@ -251,8 +251,8 @@ def process_to_prsn(pr, tasmin, tasmax, output_dataset, freezing):
             tasmin (Variable): Variable object for tasmin
             tasmax (Variable): Variable object for tasmax
             output_dataset (CFDataset): Dataset for prsn output
-            freezing (float): Freezing temperature
     '''
+    freezing = determine_freezing(tasmin.units)
     for start, end in chunk_generator(len(pr)):
         pr_data = pr[start:end]
         tasmin_data = tasmin[start:end]
@@ -304,11 +304,9 @@ def generate_prsn_file(pr_filepath, tasmin_filepath, tasmax_filepath, outdir, ou
         create_prsn_netcdf_from_source(pr_dataset, output_dataset)
 
     logger.info('Processing files in chunks')
-    # by now we know that tasmin/tasmax have the same units
-    freezing = determine_freezing(tasmin_variable.units)
     with CFDataset(output_filepath, mode='r+') as output_dataset:
         process_to_prsn(pr_variable, tasmin_variable, tasmax_variable,
-                        output_dataset, freezing)
+                        output_dataset)
 
     logger.info('Output at: {}'.format(output_filepath))
     logger.info('Complete')
