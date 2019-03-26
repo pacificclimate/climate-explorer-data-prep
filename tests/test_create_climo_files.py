@@ -171,14 +171,14 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
     if split_intervals:
         assert frequencies == {
            'daily': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
-           'monthly': {'sClim' + suffix, 'aClim' + suffix},
+           'monthly': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
            'seasonal': {'sClim' + suffix, 'aClim' + suffix},
            'yearly': {'aClim' + suffix},
         }[tiny_dataset.time_resolution]
     else:
         assert frequencies == {
             'daily': {'msaClim' + suffix},
-            'monthly': {'saClim' + suffix},
+            'monthly': {'msaClim' + suffix},
             'seasonal': {'saClim' + suffix},
             'yearly': {'aClim' + suffix}
         }[tiny_dataset.time_resolution]
