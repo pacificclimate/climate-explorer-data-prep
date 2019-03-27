@@ -2,8 +2,18 @@
 from argparse import ArgumentParser
 import logging
 
-from dp.generate_prsn import logger, generate_prsn_file, dry_run
+from dp.generate_prsn import generate_prsn_file, dry_run
 from nchelpers import CFDataset
+
+
+def setup_logger(level):
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s',
+                                  '%Y-%m-%d %H:%M:%S')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger = logging.getLogger('dp.generate_prsn')
+    logger.addHandler(handler)
+    logger.setLevel(level)
 
 
 def main(args):
@@ -32,5 +42,5 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--loglevel', help='Logging level',
                         choices=['INFO', 'DEBUG', 'WARNING', 'ERROR'], default='INFO')
     args = parser.parse_args()
-    logger.setLevel(getattr(logging, args.loglevel))
+    setup_logger(args.loglevel)
     main(args)
