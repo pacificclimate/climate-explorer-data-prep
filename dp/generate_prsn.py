@@ -5,45 +5,22 @@ import os
 from statistics import mean
 from math import floor
 from nchelpers import CFDataset
+from nchelpers.iteration import opt_chunk_shape, chunk_slices
 from pint import UnitRegistry
 
 from dp.units_helpers import Unit
 
 
-# Set up logging
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s',
-                              "%Y-%m-%d %H:%M:%S")
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-
-logger = logging.getLogger(__name__)
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-
+# Pint Setup
 ureg = UnitRegistry()
 Q_ = ureg.Quantity
 
-
-def chunk_generator(size, max_len):
-    '''Yield the start and end indices for chunking through a given array length'''
-    start = 0
-    end = size
-
-    if size > max_len:
-        size = max_len
-
-    while(start < max_len):
-        if end > max_len:
-            end = max_len
-
-        yield start, end
-
-        start = end
-        end += size
-
+# Get Logger
+logger = logging.getLogger(__name__)
 
 
 def dry_run(filepaths):
+    '''Perform metadata checks on the input files'''
     logger.info('Dry Run')
     for filepath in filepaths.values():
         logger.info('')
@@ -64,11 +41,7 @@ def dry_run(filepaths):
 def unique_shape(arrays):
     '''Ensure each array in dict is the same shape'''
     shapes = {a.shape for a in arrays.values()}
-    if not len(shapes) == 1:
-        logger.warning('Arrays are not the same shape {}'.format(shapes))
-        return False
-    else:
-        return True
+    return len(shapes) == 1
 
 
 def is_unique_value(values):
@@ -160,12 +133,7 @@ def has_required_vars(datasets, required_vars):
             unique_vars.add(var)
 
     required_vars = set(required_vars)
-    if required_vars.intersection(unique_vars) == required_vars:
-        return True
-    else:
-        logger.warning('Files do not contain required variables. required: {} have: {}'
-                       .format(required_vars, unique_vars))
-        return False
+    return required_vars.intersection(unique_vars) == required_vars
 
 
 def matching_datasets(datasets):
@@ -192,28 +160,14 @@ def matching_datasets(datasets):
     return True
 
 
-def matching_temperature_units(tasmin, tasmax, chunk_size):
-    '''Check if temperature datasets have matching units,
-       if not convert tasmax units
-    '''
-    min_units = ureg.parse_units(tasmin.units)
-    max_units = ureg.parse_units(tasmax.units)
+def convert_temperature_units(data, units_from, units_to):
+    '''Given an array of temperature values convert data to desired units'''
+    units_from = ureg.parse_units(units_from)
+    units_to = ureg.parse_units(units_to)
 
-    if not is_unique_value([min_units, max_units]):
-        logger.warning('Converting tasmax units: {} to match tasmin units: {}'
-                       .format(max_units, min_units))
-
-        # tasmax units converted to tasmin units
-        converted_tasmax = np.zeros(np.shape(tasmax))
-        for start, end in chunk_generator(chunk_size, len(tasmax)):
-            try:
-                converted_var[start:end] = (tasmax[start:end] * Q_(1.0, max_units)).to(min_units).magnitude
-            except:
-                raise Exception('Error occured while converting units')
-        return converted_tasmax
-    else:
-        logger.info('Units match')
-        return tasmax
+    logger.debug('Converting temperature units from {}: to: {}'
+                 .format(units_from, units_to))
+    return (data * Q_(1.0, units_from)).to(units_to).magnitude
 
 
 def check_pr_units(pr_units):
@@ -225,27 +179,18 @@ def check_pr_units(pr_units):
         Unit('kg / m**2 / d')
     ]
     units = Unit.from_udunits_str(pr_units)
-
-    if units not in valid_units:
-        logger.warning('Unexpected precipitation units {}'.format(units))
-        return False
-    else:
-        return True
+    return units in valid_units
 
 
 def preprocess_checks(datasets, variables, required_vars):
-    '''Perform all pre-processing checks, if any check(s) have failed raise Exception'''
+    '''Perform all pre-processing checks and return a dict of failed checks (if any)'''
     checks = {
         'matching_datasets': matching_datasets(datasets),
         'has_required_vars': has_required_vars(datasets, required_vars),
         'check_pr_units': check_pr_units(variables['pr'].units),
         'unique_shape': unique_shape(variables)
     }
-    failures = [check for check, result in checks.items() if not result]
-    if failures:
-        for failure in failures:
-            logger.exception('{} check failed'.format(failure))
-        raise Exception('Pre-process checks have failed')
+    return {check: result for check, result in checks.items() if not result}
 
 
 def process_to_prsn(variables, output_dataset, chunk_size):
@@ -263,16 +208,32 @@ def process_to_prsn(variables, output_dataset, chunk_size):
        (100, all lon, all lat).
 
        Parameters:
-            variables (dict): Dictionary containing three Variable objects (pr, tasmin, tasmax)
+            variables (dict): Dictionary containing three Variable objects
+                (pr, tasmin, tasmax)
             output_dataset (CFDataset): Dataset for prsn output
             chunk_size (int): Number of timeslices to be read/written at a time
     '''
-    freezing = pr_freezing_from_units(variables['tasmin'].units)
-    for start, end in chunk_generator(chunk_size, len(variables['pr'])):
-        chunk_data = {varname: data[start:end] for varname, data in variables.items()}
+    tasmin_units = variables['tasmin'].units
+    tasmax_units = variables['tasmax'].units
+    matching_temp_units = is_unique_value([variables['tasmin'].units,
+                                           variables['tasmax'].units])
+    freezing = pr_freezing_from_units(tasmin_units)
+
+    max_chunk_len = chunk_size * variables['pr'].shape[1] * variables['pr'].shape[2]
+    opt_chunk = opt_chunk_shape(variables['pr'].shape, max_chunk_len)
+
+    for chunk in chunk_slices(variables['pr'].shape, opt_chunk):
+        if matching_temp_units:
+            chunk_data = {varname: data[chunk] for varname, data in variables.items()}
+        else:
+            chunk_data = {
+                varname: convert_temperature_units(data[chunk], tasmin_units, tasmax_units)
+                if varname == 'tasmax' else data[chunk]
+                for varname, data in variables.items()
+            }
         means = np.mean([chunk_data['tasmin'], chunk_data['tasmax']], axis=0)
         prsn_data = np.where(means < freezing, chunk_data['pr'], 0)
-        output_dataset.variables['prsn'][start:end] = prsn_data
+        output_dataset.variables['prsn'][chunk] = prsn_data
 
 
 def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
@@ -284,18 +245,25 @@ def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
             outdir (str): Output directory
             output_file (str): Optional custom output filename
     '''
-    datasets = {varname: CFDataset(filepath) for varname, filepath in filepaths.items()}
-    variables = {varname: datasets[varname].variables[varname] for varname in filepaths.keys()}
-
     for filepath in filepaths.values():
         logger.info('Retrieving file: {}'.format(filepath))
 
+    datasets = {
+        varname: CFDataset(filepath)
+        for varname, filepath in filepaths.items()
+    }
+    variables = {
+        varname: datasets[varname].variables[varname]
+        for varname in filepaths.keys()
+    }
+
     logger.info('Conducting pre-process checks')
     required_vars = filepaths.keys()
-    preprocess_checks(datasets, variables, required_vars)
-
-    logger.info('Checking temperature units')
-    tasmax_variable = matching_temperature_units(variables['tasmin'], variables['tasmax'], chunk_size)
+    failures = preprocess_checks(datasets, variables, required_vars)
+    if failures:
+        for failure in failures.keys():
+            logger.exception('{} check failed'.format(failure))
+        raise Exception('Pre-process checks have failed')
 
     logger.info('Creating outfile')
     if output_file:
@@ -306,7 +274,7 @@ def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
     with CFDataset(output_filepath, mode='w') as output_dataset:
         create_prsn_netcdf_from_source(datasets['pr'], output_dataset)
 
-    logger.info('Processing files by {} timeslice chunks'.format(chunk_size))
+    logger.info('Processing files')
     with CFDataset(output_filepath, mode='r+') as output_dataset:
         process_to_prsn(variables, output_dataset, chunk_size)
 
