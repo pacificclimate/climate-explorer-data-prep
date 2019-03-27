@@ -10,7 +10,7 @@ from conftest import get_dataset
 from dp.generate_prsn import unique_shape, is_unique_value, \
     pr_freezing_from_units, create_prsn_netcdf_from_source, \
     create_filepath_from_source, has_required_vars, matching_datasets, \
-    matching_temperature_units, check_pr_units, process_to_prsn
+    check_pr_units, process_to_prsn, convert_temperature_units
 
 
 @pytest.mark.parametrize('arrays', [
@@ -49,8 +49,6 @@ def test_is_unique_value_not_unique(values):
 
 @pytest.mark.parametrize('unit, expected', [
     ('degC', 0.0),
-    ('degreeC', 0.0),
-    ('k', 273.15),
     ('K', 273.15)
 ])
 def test_pr_freezing_from_units(unit, expected):
@@ -104,26 +102,8 @@ def test_matching_datasets(datasets):
     ('downscaled_pr')
 ], indirect=['tiny_dataset'])
 def test_matching_datasets_not_matching(tiny_dataset, datasets):
-    datasets.append(tiny_dataset)
+    datasets.update({'tiny': tiny_dataset})
     assert not matching_datasets(datasets)
-
-
-@pytest.mark.parametrize('tasmin, tasmax', [
-    ('daily_tasmin', 'daily_tasmax')
-])
-def test_matching_temperature_units(tasmin, tasmax):
-    tasmin_dataset = get_dataset(tasmin)
-    tasmax_dataset = get_dataset(tasmax)
-    assert matching_temperature_units(tasmin_dataset, tasmax_dataset)
-
-
-@pytest.mark.parametrize('tasmin, tasmax', [
-    ('daily_tasmin', 'downscaled_tasmax')
-])
-def test_matching_temperature_units_not_matching(tasmin, tasmax):
-    tasmin_dataset = get_dataset(tasmin)
-    tasmax_dataset = get_dataset(tasmax)
-    assert not matching_temperature_units(tasmin_dataset, tasmax_dataset)
 
 
 @pytest.mark.parametrize('tiny_dataset', [
@@ -132,7 +112,7 @@ def test_matching_temperature_units_not_matching(tasmin, tasmax):
     ('daily_pr')
 ], indirect=['tiny_dataset'])
 def test_check_pr_units(tiny_dataset):
-    assert check_pr_units(tiny_dataset)
+    assert check_pr_units(tiny_dataset.variables['pr'].units)
 
 
 @pytest.mark.parametrize('fake_dataset', [
@@ -145,7 +125,7 @@ def test_check_pr_units(tiny_dataset):
     }
 ], indirect=['fake_dataset'])
 def test_check_pr_units_bad_unit(fake_dataset):
-    assert not check_pr_units(fake_dataset)
+    assert not check_pr_units(fake_dataset.variables['pr'].units)
 
 
 @pytest.mark.parametrize('pr, tasmin, tasmax', [
@@ -158,12 +138,25 @@ def test_process_to_prsn(pr, tasmin, tasmax, fake_dataset):
     pr_dataset = get_dataset(pr)
     create_prsn_netcdf_from_source(pr_dataset, fake_dataset)
 
-    pr_var = pr_dataset.variables['pr']
-    tasmin_var = get_dataset(tasmin).variables['tasmin']
-    tasmax_var = get_dataset(tasmax).variables['tasmax']
-    process_to_prsn(pr_var, tasmin_var, tasmax_var, fake_dataset, 273.15)
+    variables = {
+        'pr': pr_dataset.variables['pr'],
+        'tasmin': get_dataset(tasmin).variables['tasmin'],
+        'tasmax': get_dataset(tasmax).variables['tasmax']
+    }
+
+    process_to_prsn(variables, fake_dataset, 100)
 
     result = fake_dataset.variables['prsn'][:]
     result = np.where(result != 0)
     for array in result:
         assert len(array) == 0
+
+
+@pytest.mark.parametrize('units_from, units_to, expected', [
+    ('degC', 'K', 273.15),
+    ('K', 'degC', -273.15)
+])
+def test_convert_temperature_units(units_from, units_to, expected):
+    zeros = np.zeros((10, 5))
+    result = convert_temperature_units(zeros, units_from, units_to)
+    assert (result == expected).all()

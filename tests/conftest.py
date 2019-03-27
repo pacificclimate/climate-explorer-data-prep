@@ -20,9 +20,11 @@ def outdir(tmpdir_factory):
 
 @fixture(scope='function')
 def datasets():
-    return [get_dataset('daily_pr'),
-            get_dataset('daily_tasmin'),
-            get_dataset('daily_tasmax')]
+    return {
+        'pr': get_dataset('daily_pr'),
+        'tasmin': get_dataset('daily_tasmin'),
+        'tasmax': get_dataset('daily_tasmax')
+    }
 
 
 @fixture
