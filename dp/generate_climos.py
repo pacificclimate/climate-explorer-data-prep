@@ -172,30 +172,30 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'gdd': 'count',
         'hdd': 'count',
         }
+    
+    try:
+        var_types = {variable_types[variable] for variable in input_file.dependent_varnames()}
+    except KeyError as e:
+        raise Exception("Unsupported variable: can't yet process {}".format(e.args[0]))
 
-    var_type = None
-    for variable in input_file.dependent_varnames():
-        if variable in variable_types:
-            if var_type and var_type != variable_types[variable]:
-                raise Exception("Only one type of variable allowed per file")
-            var_type = variable_types[variable]
-        else:
-            raise Exception("Unsupported variable: can't yet process {}".format(variable))
-
+    if not len(var_types) == 1:
+        raise Exception("Only one type of variable allowed per file")
+    var_type = list(var_types)[0]
+    
     # Select the temporal subset defined by t_start, t_end
     logger.info('Selecting temporal subset')
     date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
 
     # Form climatological means/standard deviations over dependent variables
-    def climo_outputs(time_resolution, operation, data, no_agg=False):
+    def climo_outputs(time_resolution, operation, data, aggregate=True):
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data. If
-        no_aggregation is true, only operations that generate climatologies at
+        aggregate is false, only operations that generate climatologies at
         the exact same resolution as the input dataset will be used; otherwise
         data will be aggregated daily -> monthly -> seasonal -> yearly.
         """
-        if time_resolution == "daily" and no_agg:
+        if time_resolution == "daily" and not aggregate:
             raise Exception("Cannot generate non-aggregated climatologies from a daily dataset")
 
         climo_ops = {
@@ -210,7 +210,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
             'seasonal': ['tim' + operation],
             'yearly': []
             }
-        operations = climo_ops[time_resolution] + (aggregate_climo_ops[time_resolution] if not no_agg else [])
+        operations = climo_ops[time_resolution] + (aggregate_climo_ops[time_resolution] if aggregate else [])
         try:
             return [getattr(cdo, op)(input=data) for op in operations]
         except:
@@ -220,7 +220,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     logger.info('Forming climatological {}s'.format(operation))
     if var_type == 'point':
         # cdo can handle these variables in a single step
-        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, False)
+        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, True)
     elif var_type == 'count':
         # cdo's ymon* climatology-creating operations assume means for
         # constructing subyear aggregate datasets (like making a monthly
@@ -232,11 +232,11 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         aggregations = generate_counted_aggregates(temporal_subset, input_file)
         climo_files = []
         for res in aggregations:
-            climo_files.extend(climo_outputs(res, operation, aggregations[res], True))
+            climo_files.extend(climo_outputs(res, operation, aggregations[res], False))
     elif var_type == 'duration':
         # Sub-year aggregation cannot be performed at all with these variables.
         # We can only generate climatologies at the resolution received.
-        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, True)
+        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, False)
 
     # Optionally concatenate values for each interval (month, season, year) into one file
     if not split_intervals:

@@ -13,7 +13,6 @@ The key indirected fixtures are:
 """
 # TODO: Add more test input files:
 # - hydromodel from observed data
-# - an annual counted variable file
 # - a monthly or seasonal duration variable file (if such a thing even exists)
 
 import os
@@ -208,8 +207,7 @@ def test_counted_variable_values(outdir, tiny_dataset, t_start, t_end):
                                       "yearly": 4}
                 inres = timeres_ordinality[tiny_dataset.time_resolution]
                 outres = timeres_ordinality[out.time_resolution]
-                print(outvar)
-                if(outres > inres):
+                if outres > inres:
                     assert outvar.mean() >= invar.mean()
 
 
