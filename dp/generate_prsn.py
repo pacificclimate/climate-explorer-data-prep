@@ -193,7 +193,7 @@ def preprocess_checks(datasets, variables, required_vars):
     return {check: result for check, result in checks.items() if not result}
 
 
-def process_to_prsn(variables, output_dataset, chunk_size):
+def process_to_prsn(variables, output_dataset, max_chunk_len):
     '''Process precipitation data into snowfall data
 
        This method takes a precipitation, tasmin and tasmax file and uses them
@@ -211,15 +211,13 @@ def process_to_prsn(variables, output_dataset, chunk_size):
             variables (dict): Dictionary containing three Variable objects
                 (pr, tasmin, tasmax)
             output_dataset (CFDataset): Dataset for prsn output
-            chunk_size (int): Number of timeslices to be read/written at a time
+            max_chunk_len (int): Maximum length of a chunk
     '''
     tasmin_units = variables['tasmin'].units
     tasmax_units = variables['tasmax'].units
     matching_temp_units = is_unique_value([variables['tasmin'].units,
                                            variables['tasmax'].units])
     freezing = pr_freezing_from_units(tasmin_units)
-
-    max_chunk_len = chunk_size * variables['pr'].shape[1] * variables['pr'].shape[2]
     opt_chunk = opt_chunk_shape(variables['pr'].shape, max_chunk_len)
 
     for chunk in chunk_slices(variables['pr'].shape, opt_chunk):
@@ -275,8 +273,11 @@ def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
         create_prsn_netcdf_from_source(datasets['pr'], output_dataset)
 
     logger.info('Processing files')
+    spatial_dimensions = [dim.size for dimname, dim in datasets['pr'].dimensions.items()
+                          if dimname == 'lat' or dimname == 'lon']
+    max_chunk_len = chunk_size * np.prod(spatial_dimensions)
     with CFDataset(output_filepath, mode='r+') as output_dataset:
-        process_to_prsn(variables, output_dataset, chunk_size)
+        process_to_prsn(variables, output_dataset, max_chunk_len)
 
     logger.info('Output at: {}'.format(output_filepath))
     logger.info('Complete')

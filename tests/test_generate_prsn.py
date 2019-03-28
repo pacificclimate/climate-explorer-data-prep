@@ -144,7 +144,7 @@ def test_process_to_prsn(pr, tasmin, tasmax, fake_dataset):
         'tasmax': get_dataset(tasmax).variables['tasmax']
     }
 
-    process_to_prsn(variables, fake_dataset, 100)
+    process_to_prsn(variables, fake_dataset, 1000)
 
     result = fake_dataset.variables['prsn'][:]
     result = np.where(result != 0)
