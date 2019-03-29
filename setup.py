@@ -28,6 +28,7 @@ setup(
     include_package_data=True,
     scripts='''
         scripts/generate_climos
+        scripts/generate_prsn
         scripts/split_merged_climos
         scripts/update_metadata
     '''.split(),

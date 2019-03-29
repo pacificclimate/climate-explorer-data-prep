@@ -3,6 +3,11 @@ from pkg_resources import resource_filename
 from nchelpers import CFDataset
 
 
+# helpers
+def get_dataset(filename):
+    return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(filename))
+
+
 @fixture
 def tiny_dataset(request):
     return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(request.param))
@@ -11,6 +16,15 @@ def tiny_dataset(request):
 @fixture(scope='function')
 def outdir(tmpdir_factory):
     return str(tmpdir_factory.mktemp('outdir'))
+
+
+@fixture(scope='function')
+def datasets():
+    return {
+        'pr': get_dataset('daily_pr'),
+        'tasmin': get_dataset('daily_tasmin'),
+        'tasmax': get_dataset('daily_tasmax')
+    }
 
 
 @fixture
