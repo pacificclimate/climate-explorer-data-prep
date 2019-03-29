@@ -251,7 +251,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         climo_files = [convert_longitude_range(climo_file) for climo_file in climo_files]
 
     # Convert units on any pr variable in each file
-    climo_files = [convert_pr_var_units(input_file, climo_file) for climo_file in climo_files]
+    climo_files = [convert_flux_var_units(input_file, climo_file) for climo_file in climo_files]
 
     # Update metadata in climo files
     logger.debug('Updating climo metadata')
@@ -385,9 +385,9 @@ def convert_longitude_range(climo_data):
     return climo_data
 
 
-def convert_pr_var_units(input_file, climo_data):
-    """If the file contains a 'pr' variable, and if its units are per second, convert its units to per day.
-
+def convert_flux_var_units(input_file, climo_data):
+    """If the file contains a 'pr' or 'prsn' variable, and if its units are per
+       second, convert its units to per day.
     """
     attributes = {}  # will contain updates, if any, to pr variable attributes
 
