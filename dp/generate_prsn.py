@@ -114,11 +114,7 @@ def create_filepath_from_source(source, new_var, outdir):
        and output directory.
     '''
     variable, *rest = source.cmor_filename.split('_')
-
-    suffix = ''
-    for var in rest:
-        suffix += '_' + var
-
+    suffix = '_' + '_'.join(rest)
     return custom_filepath(outdir, new_var + suffix)
 
 
