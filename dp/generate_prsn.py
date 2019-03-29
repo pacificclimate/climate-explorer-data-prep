@@ -60,7 +60,7 @@ def pr_freezing_from_units(unit):
     return freezing.magnitude
 
 
-def create_prsn_netcdf_from_source(src, dst):
+def create_prsn_netcdf_from_source(src, dst, to_delete=['original_name, comment']):
     '''Using a precipiation netCDF as a template copy over the data applicable
        to prsn
     '''
@@ -96,8 +96,7 @@ def create_prsn_netcdf_from_source(src, dst):
     prsn_var.standard_name = 'snowfall_flux'
     prsn_var.long_name = 'Precipitation as Snow'
 
-    to_delete = ['original_name', 'comment']
-    for item in to_delete:
+    for item in set(to_delete):
         if hasattr(prsn_var, item):
             prsn_var.delncattr(item)
 
@@ -127,11 +126,7 @@ def has_required_vars(datasets, required_vars):
     ''' Given a list of datasets and a list of required variables, ensure the
         datasets contain all required variables.
     '''
-    unique_vars = set()
-    for dataset in datasets.values():
-        for var in dataset.variables:
-            unique_vars.add(var)
-
+    unique_vars = {var for dataset in datasets.values() for var in dataset.variables}
     required_vars = set(required_vars)
     return required_vars.intersection(unique_vars) == required_vars
 
@@ -140,17 +135,17 @@ def matching_datasets(datasets):
     '''Given a dict of datasets, match important metadata vars to ensure the
        datasets are compatible.
     '''
-    required = {
-        'project': [],
-        'model': [],
-        'institute': [],
-        'experiment': [],
-        'ensemble_member': []
+    required_attrs = {
+        'project',
+        'model',
+        'institute',
+        'experiment',
+        'ensemble_member'
     }
-
-    for dataset in datasets.values():
-        for attr in required.keys():
-            required[attr].append(getattr(dataset.metadata, attr))
+    required = {
+       attr: [getattr(dataset.metadata, attr) for dataset in datasets.values()]
+          for attr in required_attrs
+    }
 
     for attr, lst in required.items():
         if not is_unique_value(lst):
