@@ -171,8 +171,10 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'fdd': 'count',
         'gdd': 'count',
         'hdd': 'count',
-        }
-    
+        # Plan2Adapt Variables
+        'prsn': 'point'
+    }
+
     try:
         var_types = {variable_types[variable] for variable in input_file.dependent_varnames()}
     except KeyError as e:
@@ -181,7 +183,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     if not len(var_types) == 1:
         raise Exception("Only one type of variable allowed per file")
     var_type = list(var_types)[0]
-    
+
     # Select the temporal subset defined by t_start, t_end
     logger.info('Selecting temporal subset')
     date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
