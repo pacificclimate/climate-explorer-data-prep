@@ -13,6 +13,7 @@ The key indirected fixtures are:
 """
 # TODO: Add more test input files:
 # - hydromodel from observed data
+# - a monthly or seasonal duration variable file (if such a thing even exists)
 
 import os
 from datetime import datetime
@@ -61,6 +62,8 @@ def basename_components(filepath):
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'mean', t_start(1971), t_end(2000)),  # test seasonal-only
+    ('tr_annual', 'mean', t_start(1961), t_end(1990))  # test annual-only
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -78,7 +81,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
                                      split_vars=split_vars, split_intervals=split_intervals)
     num_vars = len(tiny_dataset.dependent_varnames())
     num_files = 1
-    num_intervals = 3  # TODO: determine this from the dataset
+    num_intervals = {"daily": 3, "monthly": 3, "seasonal": 2, "yearly": 1}[tiny_dataset.time_resolution]
     if split_vars:
         num_files *= num_vars
     if split_intervals:
@@ -93,6 +96,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'mean', t_start(1961), t_end(1990)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -131,6 +135,8 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'mean', t_start(1981), t_end(2010)),
+    ('tr_annual', 'std', t_start(1960), t_end(1970))
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -158,21 +164,67 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
 
     suffix = {
         'std': 'SD',
-        'mean': 'Mean'
+        'mean': 'Mean',
     }[operation]
 
     if split_intervals:
         assert frequencies == {
            'daily': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
-           'monthly': {'sClim' + suffix, 'aClim' + suffix},
+           'monthly': {'mClim' + suffix, 'sClim' + suffix, 'aClim' + suffix},
+           'seasonal': {'sClim' + suffix, 'aClim' + suffix},
            'yearly': {'aClim' + suffix},
         }[tiny_dataset.time_resolution]
     else:
         assert frequencies == {
             'daily': {'msaClim' + suffix},
-            'monthly': {'saClim' + suffix},
+            'monthly': {'msaClim' + suffix},
+            'seasonal': {'saClim' + suffix},
             'yearly': {'aClim' + suffix}
         }[tiny_dataset.time_resolution]
+
+
+@mark.parametrize('tiny_dataset, t_start, t_end', [
+    ('gdd_seasonal', t_start(2070), t_end(2099)),
+    ('gdd_seasonal', t_start(2030), t_end(2069)),
+], indirect=['tiny_dataset'])
+def test_counted_variable_values(outdir, tiny_dataset, t_start, t_end):
+    """Test that values are roughly in range for "counted" variables. Values for
+    these variables are summed into larger intermediate values before
+    climatologies are made. This test checks that longer periods have larger
+    values. NOTE: variables that have an extreme % change over time may
+    have false failures on this test."""
+    climo_files = create_climo_files(outdir, tiny_dataset, "mean",
+                                     t_start, t_end, split_vars=False,
+                                     split_intervals=True)
+    for cf in climo_files:
+        for var in tiny_dataset.dependent_varnames():
+            invar = tiny_dataset.variables[var][:]
+            with CFDataset(cf) as out:
+                outvar = out.variables[var][:]
+                timeres_ordinality = {"daily": 1,
+                                      "monthly": 2,
+                                      "seasonal": 3,
+                                      "yearly": 4}
+                inres = timeres_ordinality[tiny_dataset.time_resolution]
+                outres = timeres_ordinality[out.time_resolution]
+                if outres > inres:
+                    assert outvar.mean() >= invar.mean()
+
+
+@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
+    ('wsdi_annual', 'mean', t_start(2010), t_end(2039)),
+    ('wsdi_annual', 'std', t_start(1961), t_end(1990))
+    ], indirect=['tiny_dataset'])
+def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start, t_end):
+    """Datasets with duration variables (values measuring the number of
+    consecutive days something happens) cannot be aggregated into coarser
+    time values. Test that output resolution matches input resolution."""
+    climo_files = create_climo_files(outdir, tiny_dataset, operation,
+                                     t_start, t_end, split_vars=False,
+                                     split_intervals=False)
+    for cf in climo_files:
+        with CFDataset(cf) as output:
+            assert tiny_dataset.time_resolution == output.time_resolution
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
@@ -219,6 +271,7 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, sp
     ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'mean', t_start(1971), t_end(2000))
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
