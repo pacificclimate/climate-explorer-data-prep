@@ -400,7 +400,6 @@ def convert_pr_var_units(input_file, climo_data):
             varname = var
             variable = input_file.variables[var]
 
-
     if varname and variable:
         units = Unit.from_udunits_str(variable.units)
         if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
