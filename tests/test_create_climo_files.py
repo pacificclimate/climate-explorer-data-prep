@@ -186,6 +186,7 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
 @mark.parametrize('tiny_dataset, t_start, t_end', [
     ('gdd_seasonal', t_start(2070), t_end(2099)),
     ('gdd_seasonal', t_start(2030), t_end(2069)),
+    ('fd_monthly', t_start(1971), t_end(2000)),
 ], indirect=['tiny_dataset'])
 def test_counted_variable_values(outdir, tiny_dataset, t_start, t_end):
     """Test that values are roughly in range for "counted" variables. Values for

@@ -357,7 +357,7 @@ def generate_counted_aggregates(data, input_file):
     if input_file.time_resolution in ["daily", "monthly", "seasonal"]:
         aggregations["yearly"] = cdo.yearsum(input=data)
     if input_file.time_resolution in ["daily", "monthly"]:
-        aggregations["seasonal"] = cdo.seasum(input=data)
+        aggregations["seasonal"] = cdo.seassum(input=data)
     if input_file.time_resolution == "daily":
         aggregations["monthly"] = cdo.monsum(input=data)
 
