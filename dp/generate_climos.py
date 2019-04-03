@@ -390,38 +390,31 @@ def convert_flux_var_units(input_file, climo_data):
        second, convert its units to per day.
     """
     attributes = {}  # will contain updates, if any, to pr variable attributes
+    flux_vars = [var for var in ['pr', 'prsn'] if var in input_file.dependent_varnames()]
 
-    vars = ['pr', 'prsn']
-    varname = ''
-    variable = None
-
-    for var in vars:
-        if var in input_file.dependent_varnames():
-            varname = var
-            variable = input_file.variables[var]
-
-    if varname and variable:
-        units = Unit.from_udunits_str(variable.units)
+    for flux_var in flux_vars:
+        flux_variable = input_file.variables[flux_var]
+        units = Unit.from_udunits_str(flux_variable.units)
         if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
-            logger.info("Converting {} variable to units mm/day".format(varname))
+            logger.info("Converting {} variable to units mm/day".format(flux_var))
             # Update units attribute
             attributes['units'] = (units * Unit('s / day')).to_udunits_str()
             # Multiply values by 86400 to convert from mm/s to mm/day
             seconds_per_day = 86400
-            if hasattr(variable, 'scale_factor') or hasattr(variable, 'add_offset'):
+            if hasattr(flux_variable, 'scale_factor') or hasattr(flux_variable, 'add_offset'):
                 # This is a packed file; need only modify packing parameters
                 try:
-                    attributes['scale_factor'] = seconds_per_day * variable.scale_factor
+                    attributes['scale_factor'] = seconds_per_day * flux_variable.scale_factor
                 except AttributeError:
                     attributes['scale_factor'] = seconds_per_day * 1.0  # default value 1.0 for missing scale factor
                 try:
-                    attributes['add_offset'] = seconds_per_day * variable.add_offset
+                    attributes['add_offset'] = seconds_per_day * flux_variable.add_offset
                 except AttributeError:
                     attributes['add_offset'] = 0.0  # default value 0.0 for missing offset
             else:
                 # This is not a packed file; modify the values proper
                 # Extract variable
-                var_only = cdo.select('name={}'.format(varname), input=climo_data)
+                var_only = cdo.select('name={}'.format(flux_var), input=climo_data)
                 # Multiply values by 86400 to convert from mm/s to mm/day
                 var_only = cdo.mulc(str(seconds_per_day), input=var_only)
                 # Replace pr in all-variables file
@@ -430,7 +423,7 @@ def convert_flux_var_units(input_file, climo_data):
     # Update pr variable metadata as necessary to reflect changes madde
     with CFDataset(climo_data, mode='r+') as cf:
         for attr in attributes:
-            setattr(cf.variables[varname], attr, attributes[attr])
+            setattr(cf.variables[flux_var], attr, attributes[attr])
 
     return climo_data
 
