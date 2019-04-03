@@ -63,7 +63,8 @@ def basename_components(filepath):
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
     ('gdd_seasonal', 'mean', t_start(1971), t_end(2000)),  # test seasonal-only
-    ('tr_annual', 'mean', t_start(1961), t_end(1990))  # test annual-only
+    ('tr_annual', 'mean', t_start(1961), t_end(1990)),  # test annual-only
+    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -97,6 +98,7 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
     ('gdd_seasonal', 'mean', t_start(1961), t_end(1990)),
+    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -136,7 +138,8 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
     ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
     ('gdd_seasonal', 'mean', t_start(1981), t_end(2010)),
-    ('tr_annual', 'std', t_start(1960), t_end(1970))
+    ('tr_annual', 'std', t_start(1960), t_end(1970)),
+    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -228,9 +231,10 @@ def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start,
             assert tiny_dataset.time_resolution == output.time_resolution
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('downscaled_pr', 'mean', t_start(1965), t_end(1970)),
-    ('downscaled_pr_packed', 'std', t_start(1965), t_end(1970)),
+@mark.parametrize('tiny_dataset, operation, t_start, t_end, var', [
+    ('downscaled_pr', 'mean', t_start(1965), t_end(1970), 'pr'),
+    ('downscaled_pr_packed', 'std', t_start(1965), t_end(1970), 'pr'),
+    ('daily_prsn', 'mean', t_start(1950), t_end(2100), 'prsn'),
 ], indirect=['tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
@@ -240,21 +244,22 @@ def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start,
     False,
     True,
 ])
-def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, var, split_vars, split_intervals):
     """Test that units conversion for 'pr' variable is performed properly, for both packed and unpacked files.
     Test for unpacked file is pretty elementary: check pr units.
     Test for packed checks that packing params are modified correctly.
     """
     climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
-    assert 'pr' in tiny_dataset.dependent_varnames()
-    input_pr_var = tiny_dataset.variables['pr']
+
+    assert var in tiny_dataset.dependent_varnames()
+    input_pr_var = tiny_dataset.variables[var]
     assert Unit.from_udunits_str(input_pr_var.units) in [Unit('kg/m**2/s'), Unit('mm/s')]
     seconds_per_day = 86400
     for fp in climo_files:
         with CFDataset(fp) as cf:
-            if 'pr' in cf.dependent_varnames():
-                output_pr_var = cf.variables['pr']
+            if var in cf.dependent_varnames():
+                output_pr_var = cf.variables[var]
                 assert Unit.from_udunits_str(output_pr_var.units) in [Unit('kg/m**2/day'), Unit('mm/day')]
                 if hasattr(input_pr_var, 'scale_factor') or hasattr(input_pr_var, 'add_offset'):
                     try:

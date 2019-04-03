@@ -171,8 +171,10 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'fdd': 'count',
         'gdd': 'count',
         'hdd': 'count',
-        }
-    
+        # Plan2Adapt Variables
+        'prsn': 'point'
+    }
+
     try:
         var_types = {variable_types[variable] for variable in input_file.dependent_varnames()}
     except KeyError as e:
@@ -181,7 +183,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     if not len(var_types) == 1:
         raise Exception("Only one type of variable allowed per file")
     var_type = list(var_types)[0]
-    
+
     # Select the temporal subset defined by t_start, t_end
     logger.info('Selecting temporal subset')
     date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
@@ -249,7 +251,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         climo_files = [convert_longitude_range(climo_file) for climo_file in climo_files]
 
     # Convert units on any pr variable in each file
-    climo_files = [convert_pr_var_units(input_file, climo_file) for climo_file in climo_files]
+    climo_files = [convert_flux_var_units(input_file, climo_file) for climo_file in climo_files]
 
     # Update metadata in climo files
     logger.debug('Updating climo metadata')
@@ -383,44 +385,47 @@ def convert_longitude_range(climo_data):
     return climo_data
 
 
-def convert_pr_var_units(input_file, climo_data):
-    """If the file contains a 'pr' variable, and if its units are per second, convert its units to per day.
-
+def convert_flux_var_units(input_file, climo_data):
+    """If the file contains a 'pr' or 'prsn' variable, and if its units are per
+       second, convert its units to per day.
     """
-    pr_attributes = {}  # will contain updates, if any, to pr variable attributes
+    flux_vars = [var for var in ['pr', 'prsn'] if var in input_file.dependent_varnames()]
 
-    if 'pr' in input_file.dependent_varnames():
-        pr_variable = input_file.variables['pr']
-        pr_units = Unit.from_udunits_str(pr_variable.units)
-        if pr_units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
-            logger.info("Converting 'pr' variable to units mm/day")
+    for flux_var in flux_vars:
+        attributes = {}  # will contain updates, if any, to flux variable attributes
+        flux_variable = input_file.variables[flux_var]
+        units = Unit.from_udunits_str(flux_variable.units)
+
+        if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
+            logger.info("Converting {} variable to units mm/day".format(flux_var))
             # Update units attribute
-            pr_attributes['units'] = (pr_units * Unit('s / day')).to_udunits_str()
+            attributes['units'] = (units * Unit('s / day')).to_udunits_str()
             # Multiply values by 86400 to convert from mm/s to mm/day
             seconds_per_day = 86400
-            if hasattr(pr_variable, 'scale_factor') or hasattr(pr_variable, 'add_offset'):
+
+            if hasattr(flux_variable, 'scale_factor') or hasattr(flux_variable, 'add_offset'):
                 # This is a packed file; need only modify packing parameters
                 try:
-                    pr_attributes['scale_factor'] = seconds_per_day * pr_variable.scale_factor
+                    attributes['scale_factor'] = seconds_per_day * flux_variable.scale_factor
                 except AttributeError:
-                    pr_attributes['scale_factor'] = seconds_per_day * 1.0  # default value 1.0 for missing scale factor
+                    attributes['scale_factor'] = seconds_per_day * 1.0  # default value 1.0 for missing scale factor
                 try:
-                    pr_attributes['add_offset'] = seconds_per_day * pr_variable.add_offset
+                    attributes['add_offset'] = seconds_per_day * flux_variable.add_offset
                 except AttributeError:
-                    pr_attributes['add_offset'] = 0.0  # default value 0.0 for missing offset
+                    attributes['add_offset'] = 0.0  # default value 0.0 for missing offset
             else:
                 # This is not a packed file; modify the values proper
                 # Extract variable
-                pr_only = cdo.select('name=pr', input=climo_data)
+                var_only = cdo.select('name={}'.format(flux_var), input=climo_data)
                 # Multiply values by 86400 to convert from mm/s to mm/day
-                pr_only = cdo.mulc(str(seconds_per_day), input=pr_only)
+                var_only = cdo.mulc(str(seconds_per_day), input=var_only)
                 # Replace pr in all-variables file
-                climo_data = cdo.replace(input=[climo_data, pr_only])
+                climo_data = cdo.replace(input=[climo_data, var_only])
 
-    # Update pr variable metadata as necessary to reflect changes madde
-    with CFDataset(climo_data, mode='r+') as cf:
-        for attr in pr_attributes:
-            setattr(cf.variables['pr'], attr, pr_attributes[attr])
+        # Update pr variable metadata as necessary to reflect changes madde
+        with CFDataset(climo_data, mode='r+') as cf:
+            for attr in attributes:
+                setattr(cf.variables[flux_var], attr, attributes[attr])
 
     return climo_data
 
