@@ -2,7 +2,7 @@
 and deletes them."""
 
 from netCDF4 import Dataset
-from dp.format_rvic import find_time_variable, find_singular_item, copy_global_metadata, creation_date_from_history, guess_cf_role_variable, guess_instance_dimension, write_variable, add_dates, subtract_dates
+from dp.format_dsg_timeseries import find_time_variable, find_singular_item, copy_global_metadata, creation_date_from_history, guess_id_variable, guess_instance_dimension,write_variable, add_dates, subtract_dates
 import datetime
 import os
 from pytest import mark
@@ -111,7 +111,7 @@ def test_guess_id_variable(variables, id_variable):
     try:
         create_test_netcdf(infile, dimensions=None, variables=variables)
         nc = Dataset(infile)
-        id_var = guess_cf_role_variable(nc, "outlets")
+        id_var = guess_id_variable(nc, "outlets")
         assert(id_var == id_variable)
         nc.close()
     except:
