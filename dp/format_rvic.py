@@ -11,8 +11,11 @@ logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
 
-#TODO: rename instances of cf_role_variable to id_variable or something.
-#rename a bunch of stuff.
+# TODO: rename instances of cf_role_variable to id_variable or something.
+# TODO: make clear with variable names which functions accept a variable object 
+#    and which the name of one. Better yet, be more consistent about it, pass
+#    only what's needed.
+# TODO: rename a bunch of stuff, less RVIC-centric.
 
 def format_rvic_output(outdir, input_file, hydromodel_files, dry_run, instance_dim, cf_role_var):
     '''Formats a file output by RVIC to match both the CF Standards for 
@@ -242,17 +245,20 @@ def creation_date_from_history(hist):
     else:
         logger.warning("Don't understand date format of history metadata")
         return None
+
+#TODO: convert to general "find dimension variable" function?
+def find_time_variable(input):
+    def is_time_variable(var):
+        return len(input.variables[var].dimensions) == 1 and guess_dim_type(input.variables[var].dimensions[0]) == 'T'
+    return find_singular_item(input.variables, is_time_variable, "time variable", False)
     
 def determine_reference_date(input, output):
     '''This function attempts to determine what the reference date for the time variable
     is, which will be used in the units of the time variable, like 
     "days since 1950-01-01 0:0:0" It checks for various possible metadata attributes,
     but falls back on (ugh) parsing the filename if none of them are present'''
-    #find time variable:
-    def is_time_variable(var):
-        return len(input.variables[var].dimensions) == 1 and guess_dim_type(input.variables[var].dimensions[0]) == 'T'
-    
-    time_var = find_singular_item(input.variables, is_time_variable, "time variable", False)
+    #find time variable:    
+    time_var = find_time_variable(input)
     if time_var:
         #check metadata attributes
         if input.getncattr('title') == 'RVIC history file':
@@ -268,7 +274,6 @@ def determine_reference_date(input, output):
 
 def subtract_dates(end, days, calendar):
     '''Return the date n days earlier'''
-    print("Arguments to subtract_dates: {} {} {}".format(end, days, calendar))
     if calendar in ['standard', 'gregorian', 'proleptic_gregorian']:
         return end - datetime.timedelta(days=days)
     elif calendar in ['noleap', '365_day']:
@@ -282,7 +287,24 @@ def subtract_dates(end, days, calendar):
     day_diff = days - year_diff * days_per_year
     sdate = end - datetime.timedelta(days=day_diff)
     return sdate.replace(year=(sdate.year - year_diff))
+
+#TODO: combine date arithmetic functions
+def add_dates(start, days, calendar):
+    '''Return the day n days later'''
+    if calendar in ['standard', 'gregorian', 'proleptic_gregorian']:
+        return start + datetime.timedelta(days=days)
+    elif calendar in ['noleap', '365_day']:
+        days_per_year = 365
+    elif calendar in ['360_day']:
+        days_per_year = 360
+    else:
+        raise Exception("Don't understand calendar type {}".format(calendar))
     
+    year_diff = math.floor(days / days_per_year)
+    day_diff = days - year_diff * days_per_year
+    edate = start + datetime.timedelta(days=day_diff)
+    return edate.replace(year=(edate.year + year_diff))
+
 
 
 def copy_global_metadata(input, prefix, dest):
@@ -311,16 +333,32 @@ def copy_global_metadata(input, prefix, dest):
     
 def rvic_metadata_to_pcic_metadata(input, output, cf_role_var):
     '''RVIC and PCIC have different metadata standards. This function checks for 
-    attributes required by the PCIC metadata standards, and if they are missing,
-    generates them from equivalent RVIC metadata.'''
+    attributes required by the PCIC metadata standards, and if they are missing
+    or incorrect, generate them from equivalent RVIC metadata.'''
     
-    # Fix time units - RVIC files are often generated with time.units "days since 0001-1-1 00:00:00"
-    # Check other metadata for a reference date and fix the units if possible.
-    if 'time' in input.variables and input.variables['time'].units == "days since 0001-1-1 0:0:0":
+    # Fix time units - RVIC files are sometimes generated with time.units 
+    #   "days since 0001-1-1 00:00:00"
+    # This occurs for two reasons, which require different fixes:
+    #    1. No reference date at all was set, default supplied
+    #    2. The dodgy pre-gregorian reference date was intended.
+    
+    zeroed_time_units = [ #update these as new weird reference dates show up in the data
+        "days since 0001-1-1 0:0:0",
+        "days since 1-01-01"
+        ]
+    time_var = find_time_variable(input)
+    if input.variables[time_var].units in zeroed_time_units:
         logger.info("Invalid time units found")
-        ref_date = determine_reference_date(input, output)
-        if output and ref_date:
-            output.variables['time'].units = 'days since {}'.format(ref_date.strftime('%Y-%m-%d %H:%M:%S'))
+        if input.variables[time_var][0] == 0: # no reference date set, try to find one in metadata attributes
+            ref_date = determine_reference_date(input, output)
+            if output and ref_date:
+                output.variables[time_var].units = 'days since {}'.format(ref_date.strftime('%Y-%m-%d %H:%M:%S'))
+        elif input.variables[time_var][0] > 577460: # pre-gregorian ref date used for gregorian-era data
+            logger.warn("Correcting pre-gregorian reference dates is not implemented yet.")
+            #remove_time_offset(output) #update data to a post-gregorian ref date
+        else:
+            raise Exception("Can't handle date mapping in this dataset")
+            
     
     # PCIC metadata standards require a creation date; parse it from RVIC's history.
     if not 'creation_date' in input.__dict__ and 'history' in input.__dict__:
@@ -342,10 +380,10 @@ def rvic_metadata_to_pcic_metadata(input, output, cf_role_var):
         # set the outlet name equal to the casename attribute.
         if 'outlet_name' in input.variables and cf_role_var == 'outlet_name' and \
            'outlets' in input.dimensions and len(input.dimensions['outlets']) == 1:
-            if input.variables['outlet_name'] == 'p-0':
-                logger.info("Setting outlet name to casename {}".format(casename))
+            if output.variables['outlet_name'][0] == 'p-0':
+                logger.info("Setting outlet name to casename {}".format(input.getncattr('casename')))
                 if output:
-                    output.variables['outlet_name'][:] = input.getncattr('casename')
+                    output.variables['outlet_name'][0] = input.getncattr('casename')
     
 def write_variable(input, output, var, cf_variable):
     '''Copies a variable from the input netCDF to the output netCDF, making the 
@@ -379,4 +417,37 @@ def write_variable(input, output, var, cf_variable):
         #indicate the cf_role variable
         if cf_variable:
             output.variables[var].setncattr('cf_role', 'timeseries_id')
-
+            
+def remove_time_offset(output):
+    '''Corrects files that have a reference date of January 1 0001 by updating
+    the time (and time_bnds) variables. Assigns a new reference date in time.units,
+    and subtracts an appropriate amount from the values time and time_bnds.
+    Done because using a pre-gregorian reference date for data in the gregorian
+    error is incorrect.'''
+    
+    #find variables that will need updating
+    def is_timestamp_variable(var):
+        for d in output.variables[var].dimensions:
+            if guess_dim_type(d) not in ['bounds', 'T']:
+                return False
+        return True
+    timestamps = find_singular_item(output.variables, is_timestamp_variable, "timestamp variables", False)
+    timestamps = [timestamps] if not isinstance(timestamps, list) else timestamps
+    timevar = find_time_variable(output)
+        
+    #find the earliest timestamp, which will be the new reference date
+    min_stamp = math.floor(min([numpy.min(output.variables[v][:]) for v in timestamps]))
+    
+    units_format = r'days since (\d\d?\d?\d?)-(\d\d?)-(\d\d?)( \d\d:\d\d:\d\d)?'
+    old_date_match = re.match(units_format, output.variables[timevar].units)
+    old_ref_date = datetime.datetime(int(old_date_match.group(1)), int(old_date_match.group(2)), int(old_date_match.group(3)))
+    ref_hour = old_date_match[4] if old_date_match[4] else ""
+    new_ref_date = add_dates(old_ref_date, min_stamp, output.variables[timevar].calendar)
+    
+    logger.info("Reference date for time dimension is {}".format(old_ref_date))
+    logger.info("Normalizing reference date for {} to {}".format(timestamps, new_ref_date))
+    
+    output.variables[timevar].units = "days since {}{}".format(new_ref_date.strftime("%Y-%m-%d"), ref_hour)
+    for v in timestamps:
+        normalized = output.variables[v][:] - min_stamp
+        output.variables[v][:] = normalized

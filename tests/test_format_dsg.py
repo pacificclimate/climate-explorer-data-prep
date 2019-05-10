@@ -2,7 +2,7 @@
 and deletes them."""
 
 from netCDF4 import Dataset
-from dp.format_rvic import copy_global_metadata, creation_date_from_history, guess_cf_role_variable, guess_instance_dimension, write_variable, subtract_dates
+from dp.format_rvic import find_time_variable, find_singular_item, copy_global_metadata, creation_date_from_history, guess_cf_role_variable, guess_instance_dimension, write_variable, add_dates, subtract_dates
 import datetime
 import os
 from pytest import mark
@@ -186,8 +186,42 @@ def test_write_variable():
     (datetime.date(2019, 12, 26), "360_day", 365, datetime.date(2018, 12, 21)),
     (datetime.date(2016, 12, 26), "standard", 365, datetime.date(2015, 12, 27)),
     (datetime.date(2016, 12, 26), "noleap", 365, datetime.date(2015, 12, 26)),
+#    (datetime.date(1945, 1, 1), "standard", 710033, datetime.date(1, 1, 1)),
+#    (datetime.date(1946, 1, 1), "standard", 710033, datetime.date(2, 1, 1))
     ])
-def test_subtract_dates(edate, calendar, delta, sdate):
+def test_date_arithmetic(edate, calendar, delta, sdate):
     assert(subtract_dates(edate, delta, calendar) == sdate)
+    assert(add_dates(sdate, delta, calendar) == edate)
+
+@mark.parametrize('variables,result', [
+    (None, "time"),
+    ({"lat": ("f8", ("outlets"), {"units": "degrees_north"})}, []),
+    ({"time1": ( "f8", ("time"), {"units": "days since 0001-1-1 0:0:0"} ),
+      "time2": ( "f8", ("time"), {"units": "days since 0001-1-1 0:0:0"} )}, ["time1", "time2"])
+    ])
+def test_find_time_variable(variables, result):
+    timestamp = datetime.datetime.now().microsecond
+    infile = "testinput{}.nc".format(timestamp)
+    create_test_netcdf(infile, None, variables=variables)
+    nc = Dataset(infile, 'r')
+    assert(find_time_variable(nc) == result)
+    nc.close()
+    os.remove(infile)
     
-#TODO: test determine_reference_date
+@mark.parametrize('list, ex, result', [
+    ([1, 2, 3, 4], True, None),
+    ([1, 2, 3, 4], False, [1, 2, 3, 4]),
+    ([1, 6, 7, 8], True, 1),
+    ([1, 6, 7, 8], False, 1),
+    ([6, 7, 8], False, []),
+    ([6, 7, 8], True, None)
+    ])
+def test_find_singular_item(list, ex, result):
+    try:
+        assert(result == find_singular_item(list, lambda n: n < 5, "test", ex))
+    except:
+        assert result is None
+    
+
+
+#TODO: test determine_reference_date, test 
