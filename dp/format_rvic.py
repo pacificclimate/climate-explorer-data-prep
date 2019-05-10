@@ -96,11 +96,11 @@ def format_rvic_output(outdir, input_file, hydromodel_files, dry_run, instance_d
         metadata_conflicts = rvic.__dict__
         for file in hydromodel_files:
             logger.info("Adding additional metadata from {}".format(file))
-            prefix = file[1] if length(file) > 1 else None
+            prefix = file[0]
             dest = output if output else metadata_conflicts
-            md_file = Dataset(file[0], 'r')
+            md_file = Dataset(file[1], 'r')
             copy_global_metadata(md_file, prefix, dest)
-            nc.close(md_file)
+            md_file.close()
             
         # Check for missing metadata required by the PCIC standards, generate it from RVIC
         # equivalents if possible
