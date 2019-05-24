@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # make sure input file exists
-    if !os.path.isfile(args.file):
+    if not os.path.isfile(args.file):
         raise Exception("Data file not found: {}".format(args.file))
 
     metadata = []
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         if len(m_list) == 1:  # no prefix given by user
             m_list = m_list.insert(0, None)
         # make sure eupplemental metadata file exists
-        if !os.path.isfile(m_list[1]):
+        if not os.path.isfile(m_list[1]):
             raise Exception("Metadata file not found: {}".format(m_list[1]))
         metadata.append(m_list)
     args.metadata = metadata

@@ -166,13 +166,16 @@ def test_write_variable():
             size = None if nc.dimensions[d].isunlimited() else len(nc.dimensions[d])
             nc2.createDimension(d, size)
     for v in nc.variables:
-        write_variable(nc, nc2, v, v == 'outlet_name')
+        write_variable(nc, nc2, v, v == 'outlet_name', 'outlets')
     
     #all variables written?    
     assert(len(nc2.variables) == len(nc.variables))
     
     #text dimension reduced?
     assert(len(nc2.variables['outlet_name'].dimensions) == 1)
+    
+    #coordinates written?
+    assert(nc2.variables['streamflow'].getncattr('coordinates') == 'lon lat outlet_name')
     
     #cf_variable marked?
     assert(nc2.variables['outlet_name'].getncattr('cf_role') == 'timeseries_id')

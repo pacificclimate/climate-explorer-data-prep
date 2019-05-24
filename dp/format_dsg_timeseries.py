@@ -89,17 +89,18 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
         # cf_role attribute in the input file, or - as a last resort - the script
         # will check whether there's only one possibility.
         if not id_var:
-            id_var = guess_id_role_variable(input, instance_dim)
+            id_var = guess_id_variable(input, instance_dim)
         logger.info("Location ID variable: {}".format(id_var))
 
         # Copy variables to output file
         for var in input.variables:
-            write_variable(input, output, var, var == id_var)
+            write_variable(input, output, var, var == id_var, instance_dim)
 
         # Global metadata
         logger.info("Copying global metadata")
         if output:
             output.setncatts(input.__dict__)
+            output.setncattr("featureType", "timeSeries")
 
         # Additional metadata
         # Copies metadata from one or more additional files, optionally with a
@@ -200,25 +201,28 @@ def guess_instance_dimension(nc):
         return guess_dim_type(d) == "I" or not guess_dim_type(d)
     return find_singular_item(nc.dimensions, possible_instance_dimension, "instance dimension")
 
+def is_instance_variable(nc, var, instance_dim):
+    '''Returns true if the selected variable has only the instance 
+    dimension and text dimension(s).'''
+    for d in nc.variables[var].dimensions:
+        if d != instance_dim and guess_dim_type(d) != 'text':
+            return False
+    return True
 
 def guess_id_variable(nc, instance_dim):
     '''Returns the unique location ID variable of a dataset.
     It may already be specified via the cf_role metadata attribute.
     If not, and there's only one variable that qualifies (has a single
     dimension, the instance dimension), return it.'''
-    # checks whether a variable is an "instance variable" having only
-    # the instance dimension. text dimensions don't count.
-    def possible_id_var(var):
-        for d in nc.variables[var].dimensions:
-            print("dimension: {}".format(d))
-            if d != instance_dim and guess_dim_type(d) != 'text':
-                return False
-        return True
+    
+    def check_instance_variable(var):
+        '''is_instance_variable but with bound arguments so it fits into find_sungular'''
+        return is_instance_variable(nc, var, instance_dim)
 
     # first check whether one variable is already specified
     def is_id_variable(var):
         v = nc.variables[var]
-        if 'cf_role' in v.__dict__ and possible_id_var(v.name):
+        if 'cf_role' in v.__dict__ and check_instance_variable(v.name):
             if v.getncattr('cf_role') == "timeseries_id":
                 return True
             else:
@@ -227,9 +231,10 @@ def guess_id_variable(nc, instance_dim):
     variables = find_singular_item(nc.variables, is_id_variable,
                                    "predefined id variable", False)
     variables = listify(variables)
+    print("variables: {}".format(variables))
     if len(variables) == 0:
         # no pre-defined id variable. see if we can determine a suitable one
-        return find_singular_item(nc.variables, possible_id_var, "id variable")
+        return find_singular_item(nc.variables, check_instance_variable, "id variable")
     elif(len(variables) == 1):
         return variables[0]
     else:
@@ -415,11 +420,13 @@ def rvic_metadata_to_pcic_metadata(input, output, id_var):
                     output.variables['outlet_name'][0] = casename
 
 
-def write_variable(input, output, var, id_variable):
+def write_variable(input, output, var, id_variable, instance_dim):
     '''Copies a variable from the input netCDF to the output netCDF, making the
     following two changes as necessary:
       * char variables with a string length dimension -> vlen variables
       * variable designated the id variable += cf_role: timeseries_id attribute
+      * non-instance variables associated with the instance dimension get a
+        'coordinates' attribute.
     '''
     reduce_dimension = text_dimension(input.variables[var])
     if reduce_dimension:
@@ -433,7 +440,6 @@ def write_variable(input, output, var, id_variable):
             shape = tuple([len(input.dimensions[d]) for d in new_dimensions])  # match new shape
             strings = numpy.reshape(strings, shape)
             output.variables[var][:] = strings
-
     else:
         logger.info("Writing variable {}".format(var))
         if output:
@@ -443,10 +449,21 @@ def write_variable(input, output, var, id_variable):
     if output:
         # variable attributes
         output.variables[var].setncatts(input.variables[var].__dict__)
+        outvar = output.variables[var]
 
         # indicate the id variable
         if id_variable:
-            output.variables[var].setncattr('cf_role', 'timeseries_id')
+            outvar.setncattr('cf_role', 'timeseries_id')
+        
+        # if this is a data variable, it needs a 'coordinates' attribute
+        # containing a list of all the instance variables
+        if instance_dim in outvar.dimensions and len(outvar.dimensions) > 1:
+            coordinates = ""
+            for v in input.variables:
+                if is_instance_variable(input, v, instance_dim):
+                    coordinates = "{} {}".format(coordinates, v)
+            outvar.setncattr('coordinates', coordinates.strip())
+            
 
 
 def remove_time_offset(output):
