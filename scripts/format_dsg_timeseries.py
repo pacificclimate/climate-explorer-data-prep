@@ -44,6 +44,9 @@ if __name__ == '__main__':
     # make sure input file exists
     if not os.path.isfile(args.file):
         raise Exception("Data file not found: {}".format(args.file))
+    
+    # standardize output directory format - strip trailing slash if present
+    args.outdir = args.outdir.rstrip('/')
 
     metadata = []
     for m in args.metadata:

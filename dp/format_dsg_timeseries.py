@@ -7,6 +7,7 @@ import re
 import datetime
 import os
 import math
+import time
 '''
 Formats a netCDF file to meet the CF Standards for Discrete Structured Geometry
 data. This is data recorded at one or more distinct locations, instead of at
@@ -42,6 +43,7 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
             - convert character variables with a string length dimension to
               string variables so they can be standard instance variables
         * Designate one instance dimension to act as a unique ID for locations
+        * Provide a list of instance variables as a metadata attribute to data variables
 
     Optional operations done to RVIC data to bring it up to PCIC standards:
         * Import metadata from the hydromodel files used to generate the data
@@ -50,9 +52,13 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
             history -> creation_date
             fill in time.units if missing
             assign a more descriptive outlet name instead of default "p-0"
-
-    Not associated with any standard, but kind of nice:
-        * Renamed to a CMOR-style filename
+    
+    The new file will have a randomly generated name.
+        
+    Terminology note: "instance variable" and "coordinate variable" refer to
+    the same group of variables when dealing with discrete sampling datasets.
+    (Though not for other datasets). This script refers to "instance variables", 
+    but nchelpers calls them "coordinate variables".
     '''
 
     try:
@@ -110,7 +116,7 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
         # previous step.
         metadata_conflicts = input.__dict__
         for file in metadata_files:
-            logger.info("Adding additional metadata from {}".format(file))
+            logger.info("Adding additional metadata from {}".format(file[1]))
             prefix = file[0]
             dest = output if output else metadata_conflicts
             md_file = Dataset(file[1], 'r')
@@ -121,8 +127,21 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
         # equivalents if possible
         rvic_metadata_to_pcic_metadata(input, output, id_var)
 
-        # Update history.
+        # Update history. Note that default arguments left unspecified by user
+        # will be explicitly included.
         logger.info("Updating history attribute")
+        hist_entry = '{}: format_dsg_timeseries -o {}{} -i {} -c {} {}\n '.format(
+            time.ctime(time.time()),
+            outdir,
+            " -m {}".format(metadata_files) if metadata_files else "",
+            instance_dim,
+            id_var,
+            input_file
+            )
+        
+        if output:
+            output.history = hist_entry + (output.history if "history" in output.__dict__ else "")        
+            
 
     except:
         # something went wrong; close the files.
@@ -132,10 +151,11 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
             output.close()
             os.remove(random_filename)
         raise
-    # Generate a CMOR-type filename and rename the output file.
-    # TODO: that!
-
-    # Done!
+    
+    if(output):
+        logger.info("Discrete Structured Geometry written to {}".format(random_filename))
+        output.close()
+    input.close()
 
 
 def guess_dim_type(dim):
@@ -231,7 +251,6 @@ def guess_id_variable(nc, instance_dim):
     variables = find_singular_item(nc.variables, is_id_variable,
                                    "predefined id variable", False)
     variables = listify(variables)
-    print("variables: {}".format(variables))
     if len(variables) == 0:
         # no pre-defined id variable. see if we can determine a suitable one
         return find_singular_item(nc.variables, check_instance_variable, "id variable")
@@ -398,7 +417,15 @@ def rvic_metadata_to_pcic_metadata(input, output, id_var):
         logger.info("Generating creation_date from history")
         cdate = creation_date_from_history(input.getncattr('history'))
         if output and cdate:
-            output.setncattr('history', 'cdate')
+            output.setncattr('creation_date', str(cdate))
+    
+    #RVIC files sometimes lack the PCIC required "product" attribute
+    if 'product' not in input.__dict__:
+        if input.getncattr('title') == 'RVIC history file':
+            if output:
+                output.setncattr('product', 'streamflow model output')
+        else:
+            logger.warn("Unknown data product type, metadata update needed")
 
     # casename, in the RVIC model, is a short alphanumeric code for the
     # location being modeled. If the datafile is missing a domain attribute
@@ -422,7 +449,7 @@ def rvic_metadata_to_pcic_metadata(input, output, id_var):
 
 def write_variable(input, output, var, id_variable, instance_dim):
     '''Copies a variable from the input netCDF to the output netCDF, making the
-    following two changes as necessary:
+    following three changes as necessary:
       * char variables with a string length dimension -> vlen variables
       * variable designated the id variable += cf_role: timeseries_id attribute
       * non-instance variables associated with the instance dimension get a
