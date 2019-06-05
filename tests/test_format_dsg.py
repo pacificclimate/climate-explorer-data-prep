@@ -2,7 +2,7 @@
 and deletes them."""
 
 from netCDF4 import Dataset
-from dp.format_dsg_timeseries import find_time_variable, find_singular_item, copy_global_metadata, creation_date_from_history, guess_id_variable, guess_instance_dimension,write_variable, add_dates, subtract_dates
+from dp.format_dsg_timeseries import find_time_variable, find_singular_item, copy_global_metadata, creation_date_from_history, guess_id_variable, guess_instance_dimension, write_variable
 import datetime
 import os
 from pytest import mark
@@ -183,18 +183,6 @@ def test_write_variable():
     nc2.close()
     os.remove(infile)
     os.remove(outfile)
-    
-@mark.parametrize('edate,calendar,delta,sdate', [
-    (datetime.date(2019, 12, 26), "standard", 365, datetime.date(2018, 12, 26)),
-    (datetime.date(2019, 12, 26), "360_day", 365, datetime.date(2018, 12, 21)),
-    (datetime.date(2016, 12, 26), "standard", 365, datetime.date(2015, 12, 27)),
-    (datetime.date(2016, 12, 26), "noleap", 365, datetime.date(2015, 12, 26)),
-#    (datetime.date(1945, 1, 1), "standard", 710033, datetime.date(1, 1, 1)),
-#    (datetime.date(1946, 1, 1), "standard", 710033, datetime.date(2, 1, 1))
-    ])
-def test_date_arithmetic(edate, calendar, delta, sdate):
-    assert(subtract_dates(edate, delta, calendar) == sdate)
-    assert(add_dates(sdate, delta, calendar) == edate)
 
 @mark.parametrize('variables,result', [
     (None, "time"),
