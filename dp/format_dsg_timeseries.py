@@ -125,7 +125,7 @@ def format_dsg_timeseries(outdir, input_file, metadata_files,
 
         # Check for missing metadata required by the PCIC standards, generate it from RVIC
         # equivalents if possible
-        rvic_metadata_to_pcic_metadata(input, output, id_var)
+        rvic_metadata_to_pcic_metadata(input, output, id_var, metadata_files)
 
         # Update history. Note that default arguments left unspecified by user
         # will be explicitly included.
@@ -382,18 +382,73 @@ def copy_global_metadata(input, prefix, dest):
             dest.setncattr(prefixed, input.getncattr(m))
     logger.info("Copied {} attributes".format(copied))
 
+def is_rvic_output(nc):
+    return nc.getncattr('title') == 'RVIC history file'
 
-def rvic_metadata_to_pcic_metadata(input, output, id_var):
+def equivalent_calendars(a, b):
+    calendars = {
+        "gregorian": "gregorian",
+        "standard": "gregorian",
+        "proleptic_gregorian": "gregorian",
+        "365_day": "365_day",
+        "noleap": "365_day",
+        "360_day": "360_day"}
+    return calendars[a] == calendars[b]
+
+def copy_time_metadata(src, dest):
+    '''This function copies metadata associated with the time variable
+    from one file to another. It is intended to be used to update an
+    RVIC streamflow result from the hydromodel input used to generate it.
+    For some reason, RVIC sets times (possibly incorrectly) with reference
+    year 0001.
+    It raises an exception rather than doing anything clever in an 
+    unexpected case.'''
+    src_time = src.variables[find_time_variable(src)]
+    dest_time = dest.variables[find_time_variable(dest)]
+    
+    if not len(src_time) == len(dest_time):
+        raise Exception("Cannot compare time metadata if time dimension is unequal {} {}".format(dest.filepath, src.filepath))
+    if not equivalent_calendars(src_time.getncattr('calendar'),dest_time.getncattr('calendar')):
+        raise Exception("Cannot compare time metadata with two different calendars")
+    
+    ref_date_pattern = r'days since (\d\d\d\d)-(\d\d?)-(\d\d?)( \d\d?:\d\d?:\d\d?)?'
+    ref_date_match = re.match(ref_date_pattern, src_time.getncattr('units'))
+    
+    if ref_date_match:
+        time = ref_date_match.group(4)
+        if time:
+            time = time.split(':')
+            refdate = datetime.datetime(int(ref_date_match.group(1)),
+                                        int(ref_date_match.group(2)),
+                                        int(ref_date_match.group(3)),
+                                        int(time[0]), int(time[1]), int(time[2]))
+            
+        else:
+            refdate = datetime.datetime(int(ref_date_match.group(1)),
+                                        int(ref_date_match.group(2)),
+                                        int(ref_date_match.group(3)))
+        print("refdate = {}".format(refdate))
+        dest_time.setncattr('units', 'days since {}'.format(refdate.strftime("%Y-%m-%d")))
+        dest_time[:] = src_time[:]
+    else:
+        raise Exception("Cannot understand format of units string: {}".format(src_time.getncattr('units')))
+
+def rvic_metadata_to_pcic_metadata(input, output, id_var, metadata_files):
     '''RVIC and PCIC have different metadata standards. This function checks
     for attributes required by the PCIC metadata standards, and if they are
-    missing or incorrect, generate them from equivalent RVIC metadata.'''
+    missing or incorrect, generate them from equivalent RVIC metadata.
+    
+    This function *can* be run on non-RVIC files, but it will print warnings
+    about missing metadata instead of correcting it, since assumptions about
+    RVIC's data process will not hold true.'''
 
-    # Fix time units - RVIC files are sometimes generated with time.units
-    #   "days since 0001-1-1 00:00:00"
-    # This occurs for two reasons, which require different fixes:
-    #    1. No reference date at all was set, default supplied
-    #    2. The dodgy pre-gregorian reference date was intended.
-
+    # Fix time units
+    # For inscrutable reasons, RVIC streamflow files are generated with time.units
+    #   "days since 0001-1-1 0:0:0"
+    # However, the hydrological datafiles used as *inputs* to RVIC have 
+    # valid time values. If this is an RVIC file with an 
+    # invalid reference date, and we have a hydromodel output file, copy
+    # the relevant values to the time variable.
     zeroed_time_units = [  # update these as new weird 0 dates discovered
         "days since 0001-1-1 0:0:0",
         "days since 1-01-01"
@@ -401,16 +456,24 @@ def rvic_metadata_to_pcic_metadata(input, output, id_var):
     time_var = find_time_variable(input)
     if input.variables[time_var].units in zeroed_time_units:
         logger.info("Invalid time units found")
-        if input.variables[time_var][0] == 0:  # default, incorrect reference date
-            ref_date = determine_reference_date(input, output)
-            if output and ref_date:
-                output.variables[time_var].units = 'days since {}'.format(ref_date.strftime('%Y-%m-%d %H:%M:%S'))
-        elif input.variables[time_var][0] > 577460:
-            logger.warn("Correcting pre-gregorian reference dates is not implemented yet.")
-            # update data to post-gregorian ref data (currently buggy)
-            # remove_time_offset(output)
+        if is_rvic_output(input):
+            def is_hydromodel_input(filearg):
+                return filearg[0] == 'hydromodel'            
+            hydromodel_file = find_singular_item(metadata_files, is_hydromodel_input, 
+                                                 "hydromodel input file", False)
+            if isinstance(hydromodel_file, list):
+                hf = Dataset(hydromodel_file[1], 'r')
+                logger.info("Populating time metadata from hydromodel input file")
+                if output:
+                    try:
+                        copy_time_metadata(hf, output)
+                    except Exception as e:
+                        print("Unable to correct time variable metadata. Reason: {}".format(e))
+                hf.close()
+            else:
+                logger.warn("Unable to determine hydromodel input file to update time metadata")
         else:
-            raise Exception("Can't handle date mapping in this dataset")
+            logger.warn("Cannot correct time units: {}".format(input.variables[time_var].units))
 
     # PCIC metadata standards require a creation date; parse it from RVIC's history.
     if 'creation_date' not in input.__dict__ and 'history' in input.__dict__:
@@ -421,7 +484,7 @@ def rvic_metadata_to_pcic_metadata(input, output, id_var):
     
     #RVIC files sometimes lack the PCIC required "product" attribute
     if 'product' not in input.__dict__:
-        if input.getncattr('title') == 'RVIC history file':
+        if is_rvic_output(input):
             if output:
                 output.setncattr('product', 'streamflow model output')
         else:
@@ -498,7 +561,7 @@ def remove_time_offset(output):
     the time (and time_bnds) variables. Assigns a new reference date in
     time.units, and subtracts an appropriate amount from the values time and
     time_bnds. Done because using a pre-gregorian reference date for data in
-    the gregorian error is incorrect.'''
+    the gregorian era is incorrect.'''
 
     # find variables that will need updating
     def is_timestamp_variable(var):
