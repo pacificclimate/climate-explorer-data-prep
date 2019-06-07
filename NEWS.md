@@ -1,5 +1,19 @@
 # News / Release Notes
 
+## 0.6.0
+
+*2019 Jun 07*
+
+* Add ncWMS vector formatting script
+* Add metadata conversion for downscaled files
+* Add variable renaming to update_metadata script
+* Bugfix (typo) in process-climo-means.sh script
+* Add the abililty to generate monthly climos from monthly data
+* Fix the use of nchelpers.CFDataset.dependent_varnames
+* Fix unused tests
+* Add the ability to compute standard_deviation climatologies
+* Add the ability to compute snowfall from temp/precip
+
 ## 0.5.2
 
 *2017 Oct 11*
