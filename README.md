@@ -270,6 +270,16 @@ in the execution context. For example, the attribute named `product` in the glob
 accessed in the expression as the variable `product`. It can be used just like any variable in any valid
 Python expression.
 
+For example, if the `initialization_method` is given as `i1` or `i2` instead of the standard `1` or `2`,
+the `realization` as `r2` instead of `2` and the `physics_version` as `p1` instead of `1`, and so on,
+these lines would trim the extra characters from these values:
+```yaml
+global:
+  initialization_method: =initialization_method.strip('i')
+  realization: =realization.strip('r')
+  physics_version: =physics_version.strip('p')
+```
+
 The following custom functions are available for use in expressions:
 
 * `parse_ensemble_code(ensemble_code)`: Parse the argument as an ensemble code (`r<m>i<n>p<l>`) and return
