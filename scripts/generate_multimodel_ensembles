@@ -1,0 +1,96 @@
+from pprint import pformat
+from collections import Counter
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import array_agg
+
+import modelmeta as mm
+
+
+engine = create_engine("postgresql://ce_meta_ro@db3.pcic/ce_meta", echo=False)
+#engine = create_engine("postgresql://hiebert@db3.pcic/pcic_meta", echo=True)
+Session = sessionmaker(bind=engine)
+sesh = Session()
+
+vars_ = ('tasmin', 'tasmax', 'pr', 'prsn')
+
+pcic12 = {
+    'CNRM-CM5-r1',
+    'CanESM2-r1',
+    'ACCESS1-0-r1',
+    'inmcm4-r1',
+    'CSIRO-Mk3-6-0-r1',
+    'CCSM4-r2',
+    'MIROC5-r3',
+    'MPI-ESM-LR-r3',
+    'HadGEM2-CC-r1',
+    'MRI-CGCM3-r1',
+    'GFDL-ESM2G-r1',
+    'HadGEM2-ES-r1'
+}
+pcic9 = pcic12 - {'ACCESS1-0-r1', 'HadGEM2-CC-r1', 'inmcm4-r1'}
+
+# I cut/pasted the abbreviated model labels out of our webpage
+# Transform them to match the full names in the database
+def xform(x):
+    model, run = x.rsplit('-', 1)
+    return f'{model} {run}i1p1'
+
+pcic12 = [ xform(label) for label in pcic12 ]
+pcic9 = [ xform(label) for label in pcic9 ]
+
+# ORM abbreviations
+DFV = mm.DataFileVariable
+TS = mm.TimeSet
+
+for ensname, ensemble in {'PCIC9': pcic9, 'PCIC12': pcic12}.items():
+
+    print(f"The {ensname} are defined as {ensemble}")
+
+    # Aggregate all of the model/run combinations and select based on those that
+    # have all of the PCIC12 members
+    aggregate = (array_agg(mm.Model.short_name.concat(' ').concat(mm.Run.name).label('model_run')))
+    # There's some... "variation" in the RCP names. Normalize them to the form "historical,rcpXX"
+    rcp = func.regexp_replace(func.regexp_replace(mm.Emission.short_name, ' ', ''), '^rcp', 'historical,rcp')
+    
+    # These are all multi-year means, so resolution greater than month is not important
+    start_date = func.date_trunc('month', TS.start_date).label('start_date')
+    end_date = func.date_trunc('month', TS.end_date).label('end_date')
+
+    q = sesh.query(DFV.netcdf_variable_name, start_date, end_date,
+                   TS.time_resolution, rcp, aggregate)\
+            .join(mm.DataFile).join(TS).join(mm.Run).join(mm.Model).join(mm.Emission)\
+            .filter(DFV.netcdf_variable_name.in_(vars_))\
+            .filter(TS.multi_year_mean == True)\
+            .group_by(DFV.netcdf_variable_name, TS.time_resolution, start_date, end_date, rcp)\
+            .order_by(DFV.netcdf_variable_name, TS.time_resolution, rcp, start_date, end_date)
+    #        .having(aggregate.contains(pcic12))
+
+    ensemble = set(ensemble)
+    successes = 0
+    missing_counter = Counter()
+    missing_length_counter = Counter()
+    missing_details = set()
+
+    for varname, sdate, edate, rez, rcp, model_run in q.all():
+        model_run.sort()
+        sdate = sdate.strftime("%Y-%m")
+        edate = edate.strftime("%Y-%m")
+        print(f'INFO: {varname} {rez} {rcp} {sdate} {edate} {pformat(model_run, compact=True)}')
+        model_run = set(model_run)
+        if ensemble < model_run:
+            print('SUCCESS! We can use this!')
+            successes += 1
+        else:
+            missing = ensemble.difference(model_run)
+            print(f'FAILURE! Ensemble is missing {missing}')
+            missing_counter.update(missing)
+            missing_length_counter.update([len(missing)])
+            missing_details.update({ (varname, rez, rcp, sdate, edate, m) for m in missing })
+
+    print(f'SUMMARY: of the {q.count()} ensembles, {successes} of them can have the {ensname} computed')
+    print(f'SUMMARY: missing counts: {missing_counter}')
+    print(f'SUMMARY: missing counts: {missing_length_counter}')
+    print(f'SUMMARY: list of missing climos: {pformat(missing_details)}, LENGTH {len(missing_details)}')
