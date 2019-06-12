@@ -423,3 +423,29 @@ def test_convert_longitudes(outdir, tiny_dataset, operation, t_start, t_end, spl
                 else:
                     assert all(-180 <= lon < 360 for _, lon in enumerate(output_lon_var))
                     assert all(output_lon_var[i] == input_lon for i, input_lon in enumerate(input_lon_var))
+
+
+@mark.parametrize(('resolutions'), [
+    {'yearly'},
+    {'yearly', 'seasonal'},
+    {'yearly', 'seasonal', 'monthly'},
+    {'monthly', 'daily'}, # Daily does not exist
+    set()
+])
+@mark.parametrize(('split_intervals'), [
+    True,
+    False
+])
+def test_resolution_filter(outdir, datasets, resolutions, split_intervals):
+    tiny_dataset = datasets['tasmax']
+    climo_files = create_climo_files(
+        outdir, tiny_dataset, 'mean', t_start(1965), t_end(1970),
+        split_vars=False, split_intervals=split_intervals,
+        convert_longitudes=False, output_resolutions=resolutions
+    )
+    # Only these resolutions are supported as aggregation targets
+    if split_intervals:
+        resolutions = resolutions.intersection({'yearly', 'seasonal', 'monthly'})
+        assert len(climo_files) == len(resolutions)
+    else:
+        assert len(climo_files) == min(1, len(resolutions))
