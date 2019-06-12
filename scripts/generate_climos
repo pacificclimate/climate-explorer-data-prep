@@ -41,7 +41,8 @@ def main(args):
             for period in input_file.climo_periods.keys() & args.climo:
                 t_range = input_file.climo_periods[period]
                 create_climo_files(args.outdir, input_file, args.operation, *t_range,
-                                   convert_longitudes=args.convert_longitudes, split_vars=args.split_vars)
+                                   convert_longitudes=args.convert_longitudes, split_vars=args.split_vars,
+                                   output_resolutions=args.resolutions)
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Create climatologies from CMIP5 data')
@@ -51,6 +52,11 @@ if __name__ == '__main__':
                         help='Climatological periods to generate. '
                         'Defaults to all available in the input file. '
                         'Ex: -c 6190 -c 7100 -c 8100 -c 2020 -c 2050 -c 2080')
+    parser.add_argument('-r', '--resolutions', default=[], action='append',
+                        choices=['yearly', 'seasonal', 'monthly'],
+                        help='Temporal resolutions of multiyear means to generate. '
+                        'Defaults to ["yearly", "seasonal", "monthly"] '
+                        'Ex: -r yearly -r seasonal')
     parser.add_argument('-l', '--loglevel', help='Logging level',
                         choices=log_level_choices, default='INFO')
     parser.add_argument('-n', '--dry-run', dest='dry_run', action='store_true')
@@ -67,5 +73,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if not args.climo:
         args.climo = standard_climo_periods().keys()
+    if not args.resolutions:
+        args.resolutions = ['yearly', 'seasonal', 'monthly']
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
