@@ -20,7 +20,7 @@ from datetime import datetime
 
 from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
-from pytest import mark
+from pytest import mark, warns
 
 from nchelpers import CFDataset
 
@@ -449,3 +449,22 @@ def test_resolution_filter(outdir, datasets, resolutions, split_intervals):
         assert len(climo_files) == len(resolutions)
     else:
         assert len(climo_files) == min(1, len(resolutions))
+
+
+@mark.parametrize(('tiny_dataset'), [
+    'tr_annual'
+], indirect=['tiny_dataset'])
+def test_resolution_warning(outdir, tiny_dataset):
+    '''If we try to compute a monthly climo from an annual file
+       there should be zero output files and a warning issued
+    '''
+    with warns(Warning) as record:
+        climo_files = create_climo_files(
+            outdir, tiny_dataset, 'mean', t_start(1965),
+            t_end(1971), split_vars=True, split_intervals=True,
+            convert_longitudes=True, output_resolutions={'monthly'}
+        )
+
+    assert climo_files == []
+    assert len(record) == 1
+    assert "None of the selected output resolutions" in str(record[0].message)

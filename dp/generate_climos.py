@@ -2,6 +2,7 @@ import os
 import os.path
 import logging
 import shutil
+import warnings
 
 from datetime import datetime
 import dateutil.parser
@@ -227,6 +228,16 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
             operations.update(aggregate_climo_ops[time_resolution])
         # Filter the operations by resolution to create
         operations = [operations[rez] for rez in output_resolutions if rez in operations]
+
+        # It's possible that the set of user selected output
+        # resolutions is disjoint with the set of available output
+        # resoultions
+        if not operations:
+            warnings.warn("None of the selected output resolutions %s are "
+                          "computable from a file with %s temporal resolution"
+                          .format(' ,'.join(output_resolutions), time_resolution))
+            return []
+
         try:
             return [getattr(cdo, op)(input=data) for op in operations]
         except:
