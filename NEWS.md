@@ -1,5 +1,13 @@
 # News / Release Notes
 
+## 0.7.0
+
+*2019 Jun 14*
+
+* Adds two new options to generate_climo script
+  * --climo to select a subset of climatological periods
+  * --resolutions to select a subset of temporal resolutions
+
 ## 0.6.0
 
 *2019 Jun 07*
