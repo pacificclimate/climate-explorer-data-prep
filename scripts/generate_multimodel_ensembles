@@ -1,5 +1,9 @@
+import os
+import sys
 from pprint import pformat
-from collections import Counter
+from collections import Counter, defaultdict
+import subprocess
+import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -8,89 +12,244 @@ from sqlalchemy.dialects.postgresql import array_agg
 
 import modelmeta as mm
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-engine = create_engine("postgresql://ce_meta_ro@db3.pcic/ce_meta", echo=False)
-#engine = create_engine("postgresql://hiebert@db3.pcic/pcic_meta", echo=True)
+PBS = b"""
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=30:00:00
+
+# PARAMS: NCFILE, OUTDIR (gluster), PERIOD_FLAGS, RES_FLAGS
+
+module load python
+
+pushd ${TMPDIR}
+
+python3 -m venv env
+source env/bin/activate
+
+pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple ce-dataprep
+
+INFILE=$(basename ${NCFILE})
+
+module load cdo-bin
+which cdo
+
+rsync -v ${NCFILE} ./
+generate_climos -v True -i True -g True ${RES_FLAGS} ${PERIOD_FLAGS} -o output/ -p mean -l DEBUG ${INFILE}
+if [ $? -eq 0 ]; then
+    rsync -rv output/ ${OUTDIR}
+else
+    exit 1
+fi
+"""
+
+
+# FIXME: This assumes that sdate and edate are not relevant
+def find_climo_dependency(sesh, model, run, varname, rcp):
+    q = (
+        sesh.query(mm.DataFile)
+        .join(mm.Run)
+        .join(mm.Model)
+        .join(mm.Emission)
+        .join(mm.DataFileVariable)
+        .join(TS)
+        .filter(mm.Model.short_name == model)
+        .filter(mm.Run.name == run)
+        .filter(DFV.netcdf_variable_name == varname)
+        .filter(normalized_rcp == rcp)
+        .filter(TS.time_resolution == "daily")
+        .filter(TS.multi_year_mean == False)
+    )
+    try:
+        return q.one_or_none()
+    except Exception as e:
+        import pdb
+
+        pdb.set_trace()
+
+
+def year_to_period(year_range):
+    map = {
+        (1961, 1990): "6190",
+        (1971, 2000): "7100",
+        (1981, 2010): "8110",
+        (2010, 2039): "2020",
+        (2040, 2069): "2050",
+        (2070, 2099): "2080",
+    }
+    return map[year_range]
+
+
+def create_climo_dispatch(fname, periods, resolutions):
+    rez_flags = " ".join([f"-r {rez}" for rez in resolutions])
+    period_flags = " ".join(
+        [f"-c {year_to_period((start.year, end.year))}" for start, end in periods]
+    )
+    params = {
+        "NCFILE": fname,
+        "PERIOD_FLAGS": period_flags,
+        "RES_FLAGS": rez_flags,
+        "OUTDIR": "/storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/pcic12",
+    }
+    vars = ",".join(f'{key}="{val}"' for key, val in params.items())
+    return f"qsub -j oe -v {vars} -M hiebert@uvic.ca -N gen_climos"
+
+
+engine = create_engine("postgresql://ce_meta_ro@db3/ce_meta", echo=False)
+# engine = create_engine("postgresql://hiebert@db3.pcic/pcic_meta", echo=True)
 Session = sessionmaker(bind=engine)
 sesh = Session()
 
-vars_ = ('tasmin', 'tasmax', 'pr', 'prsn')
+vars_ = ("tasmin", "tasmax", "pr", "prsn")
 
 pcic12 = {
-    'CNRM-CM5-r1',
-    'CanESM2-r1',
-    'ACCESS1-0-r1',
-    'inmcm4-r1',
-    'CSIRO-Mk3-6-0-r1',
-    'CCSM4-r2',
-    'MIROC5-r3',
-    'MPI-ESM-LR-r3',
-    'HadGEM2-CC-r1',
-    'MRI-CGCM3-r1',
-    'GFDL-ESM2G-r1',
-    'HadGEM2-ES-r1'
+    "CNRM-CM5-r1",
+    "CanESM2-r1",
+    "ACCESS1-0-r1",
+    "inmcm4-r1",
+    "CSIRO-Mk3-6-0-r1",
+    "CCSM4-r2",
+    "MIROC5-r3",
+    "MPI-ESM-LR-r3",
+    "HadGEM2-CC-r1",
+    "MRI-CGCM3-r1",
+    "GFDL-ESM2G-r1",
+    "HadGEM2-ES-r1",
 }
-pcic9 = pcic12 - {'ACCESS1-0-r1', 'HadGEM2-CC-r1', 'inmcm4-r1'}
+pcic9 = pcic12 - {"ACCESS1-0-r1", "HadGEM2-CC-r1", "inmcm4-r1"}
 
 # I cut/pasted the abbreviated model labels out of our webpage
 # Transform them to match the full names in the database
 def xform(x):
-    model, run = x.rsplit('-', 1)
-    return f'{model} {run}i1p1'
+    model, run = x.rsplit("-", 1)
+    return f"{model} {run}i1p1"
 
-pcic12 = [ xform(label) for label in pcic12 ]
-pcic9 = [ xform(label) for label in pcic9 ]
+
+pcic12 = [xform(label) for label in pcic12]
+pcic9 = [xform(label) for label in pcic9]
 
 # ORM abbreviations
 DFV = mm.DataFileVariable
 TS = mm.TimeSet
 
 for ensname, ensemble in {'PCIC9': pcic9, 'PCIC12': pcic12}.items():
+#for ensname, ensemble in {"PCIC12": pcic12}.items():
 
-    print(f"The {ensname} are defined as {ensemble}")
+    logger.info(f"The {ensname} are defined as {ensemble}")
 
     # Aggregate all of the model/run combinations and select based on those that
     # have all of the PCIC12 members
-    aggregate = (array_agg(mm.Model.short_name.concat(' ').concat(mm.Run.name).label('model_run')))
+    aggregate = array_agg(
+        mm.Model.short_name.concat(" ").concat(mm.Run.name).label("model_run")
+    )
     # There's some... "variation" in the RCP names. Normalize them to the form "historical,rcpXX"
-    rcp = func.regexp_replace(func.regexp_replace(mm.Emission.short_name, ' ', ''), '^rcp', 'historical,rcp')
-    
-    # These are all multi-year means, so resolution greater than month is not important
-    start_date = func.date_trunc('month', TS.start_date).label('start_date')
-    end_date = func.date_trunc('month', TS.end_date).label('end_date')
+    normalized_rcp = func.regexp_replace(
+        func.regexp_replace(mm.Emission.short_name, " ", ""), "^rcp", "historical,rcp"
+    )
 
-    q = sesh.query(DFV.netcdf_variable_name, start_date, end_date,
-                   TS.time_resolution, rcp, aggregate)\
-            .join(mm.DataFile).join(TS).join(mm.Run).join(mm.Model).join(mm.Emission)\
-            .filter(DFV.netcdf_variable_name.in_(vars_))\
-            .filter(TS.multi_year_mean == True)\
-            .group_by(DFV.netcdf_variable_name, TS.time_resolution, start_date, end_date, rcp)\
-            .order_by(DFV.netcdf_variable_name, TS.time_resolution, rcp, start_date, end_date)
+    # These are all multi-year means, so resolution greater than month is not important
+    start_date = func.date_trunc("month", TS.start_date).label("start_date")
+    end_date = func.date_trunc("month", TS.end_date).label("end_date")
+
+    q = sesh.query(
+        DFV.netcdf_variable_name,
+        start_date,
+        end_date,
+        TS.time_resolution,
+        normalized_rcp,
+        aggregate,
+    )
+    q = q.join(mm.DataFile.data_file_variables)
+    q = q.join(TS)
+    q = q.join(mm.Run)
+    q = q.join(mm.Model)
+    q = q.join(mm.Emission)
+    q = q.join(mm.EnsembleDataFileVariables)
+    q = q.join(mm.Ensemble)
+    q = q.filter(DFV.netcdf_variable_name.in_(vars_))
+    q = q.filter(TS.multi_year_mean == True)
+    #    q = q.filter(mm.Ensemble.name == 'ce_files')
+    q = q.filter(mm.Emission.short_name.op("~")("historical, ?rcp.*"))
+    q = q.group_by(
+        DFV.netcdf_variable_name,
+        TS.time_resolution,
+        start_date,
+        end_date,
+        normalized_rcp,
+    )
+    q = q.order_by(
+        DFV.netcdf_variable_name,
+        TS.time_resolution,
+        normalized_rcp,
+        start_date,
+        end_date,
+    )
+
+    # q = sesh.query(DFV.netcdf_variable_name, start_date, end_date,
+    #                TS.time_resolution, rcp, aggregate)\
+    #         .join(mm.DataFile).join(TS).join(mm.Run).join(mm.Model).join(mm.Emission)\
+    #         .filter(DFV.netcdf_variable_name.in_(vars_))\
+    #         .filter(TS.multi_year_mean == True)\
+    #         .group_by(DFV.netcdf_variable_name, TS.time_resolution, start_date, end_date, rcp)\
+    #         .order_by(DFV.netcdf_variable_name, TS.time_resolution, rcp, start_date, end_date)
     #        .having(aggregate.contains(pcic12))
 
     ensemble = set(ensemble)
     successes = 0
     missing_counter = Counter()
     missing_length_counter = Counter()
-    missing_details = set()
+    missing_details = defaultdict(lambda: {"period": set(), "resolution": set()})
 
     for varname, sdate, edate, rez, rcp, model_run in q.all():
         model_run.sort()
-        sdate = sdate.strftime("%Y-%m")
-        edate = edate.strftime("%Y-%m")
-        print(f'INFO: {varname} {rez} {rcp} {sdate} {edate} {pformat(model_run, compact=True)}')
+        # sdate = sdate.strftime("%Y-%m")
+        # edate = edate.strftime("%Y-%m")
+        logger.debug(
+            f'{varname} {rez} {rcp} {sdate.strftime("%Y-%m")} {edate.strftime("%Y-%m")} {pformat(model_run, compact=True)}'
+        )
         model_run = set(model_run)
         if ensemble < model_run:
-            print('SUCCESS! We can use this!')
+            logger.debug("SUCCESS! We can use this!")
             successes += 1
+            # Dispatch multimodel ensmeble job
         else:
             missing = ensemble.difference(model_run)
-            print(f'FAILURE! Ensemble is missing {missing}')
+            logger.debug(f"FAILURE! Ensemble is missing {missing}")
             missing_counter.update(missing)
             missing_length_counter.update([len(missing)])
-            missing_details.update({ (varname, rez, rcp, sdate, edate, m) for m in missing })
+            for m in missing:
+                # Group runs by daily source file and
+                missing_details[(m, varname, rcp)]["period"].add((sdate, edate))
+                missing_details[(m, varname, rcp)]["resolution"].add(rez)
 
-    print(f'SUMMARY: of the {q.count()} ensembles, {successes} of them can have the {ensname} computed')
-    print(f'SUMMARY: missing counts: {missing_counter}')
-    print(f'SUMMARY: missing counts: {missing_length_counter}')
-    print(f'SUMMARY: list of missing climos: {pformat(missing_details)}, LENGTH {len(missing_details)}')
+    missing_details_with_files = {}
+    for (m, varname, rcp), val in missing_details.items():
+        datafile = find_climo_dependency(sesh, *m.split(), varname, rcp)
+        if datafile:
+            datafile = datafile.filename
+            # Dispatch generate_climos job
+            dispatch = create_climo_dispatch(datafile, val["period"], val["resolution"])
+            logger.info(dispatch)
+            #subprocess.run(dispatch, shell=True, input=PBS)
+            # Make sure not to run this again until all of the run from the first climo job are indexed
+        else:
+            datafile = (m, varname, rcp)
+            logger.debug("INDEX DAILY: %s %s %s", varname, m, rcp)
+            model, run = m.split()
+            path = '/storage/data/climate/downscale/BCCAQ2/bccaqv2_with_metadata/'
+            fname = os.path.join(path, f'{varname}_day_BCCAQv2+ANUSPLIN300_{model}_{rcp.replace(",", "+")}_{run}_19500101-21001231.nc')
+            if os.path.exists(fname):
+                logger.info(f'qsub -v NCFILE={fname} -j oe -M hiebert@uvic.ca index_bccaqv2.pbs')
+            else:
+                logger.error("Can't find required file: %s", fname)
+        missing_details_with_files[datafile] = val
+
+    logger.info(
+        f"Of the {q.count()} ensembles, {successes} of them can have the {ensname} computed"
+    )
+    logger.info(f"Missing counts: {missing_counter}")
+    logger.info(f"Missing counts: {missing_length_counter}")
+    logger.info(
+        f"List of missing climos: {pformat(missing_details_with_files)}, LENGTH {len(missing_details_with_files)}"
+    )
