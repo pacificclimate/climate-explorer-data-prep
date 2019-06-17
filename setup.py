@@ -31,6 +31,7 @@ setup(
         scripts/generate_prsn
         scripts/split_merged_climos
         scripts/update_metadata
+        scripts/generate_multimodel_ensembles
     '''.split(),
     classifiers=[
         'Development Status :: 4 - Beta',
