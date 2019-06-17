@@ -3,5 +3,7 @@ cdo
 nchelpers==5.5.1
 pint
 PyYAML
+SQLAlchemy
+modelmeta==0.2.0
 # for testing
 pytest
