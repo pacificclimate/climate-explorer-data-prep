@@ -18,34 +18,6 @@ import modelmeta as mm
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
-PBS = b"""
-#PBS -l nodes=1:ppn=1
-#PBS -l walltime=30:00:00
-
-# PARAMS: NCFILE, OUTDIR (gluster), PERIOD_FLAGS, RES_FLAGS
-
-module load python
-
-pushd ${TMPDIR}
-
-python3 -m venv env
-source env/bin/activate
-
-pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple ce-dataprep
-
-INFILE=$(basename ${NCFILE})
-
-module load cdo-bin
-which cdo
-
-rsync -v ${NCFILE} ./
-generate_climos -v True -i True -g True ${RES_FLAGS} ${PERIOD_FLAGS} -o output/ -p mean -l DEBUG ${INFILE}
-if [ $? -eq 0 ]; then
-    rsync -rv output/ ${OUTDIR}
-else
-    exit 1
-fi
-"""
 
 # ORM abbreviations
 DFV = mm.DataFileVariable
@@ -81,7 +53,6 @@ def find_climo_dependency(sesh, model, run, varname, rcp):
         return q.one_or_none()
     except Exception as e:
         import pdb
-
         pdb.set_trace()
 
 
@@ -98,6 +69,8 @@ def year_to_period(year_range):
 
 
 def create_climo_dispatch(fname, periods, resolutions):
+    '''Generate a torque queue submission command line string for generating climatological means
+    '''
     rez_flags = " ".join([f"-r {rez}" for rez in resolutions])
     period_flags = " ".join(
         [f"-c {year_to_period((start.year, end.year))}" for start, end in periods]
@@ -110,6 +83,53 @@ def create_climo_dispatch(fname, periods, resolutions):
     }
     vars = ",".join(f'{key}="{val}"' for key, val in params.items())
     return f"qsub -j oe -v {vars} -M hiebert@uvic.ca -N gen_climos"
+
+
+PBS_climo = b"""
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=30:00:00
+
+# PARAMS: NCFILE, OUTDIR (gluster), PERIOD_FLAGS, RES_FLAGS
+
+module load python
+
+pushd ${TMPDIR}
+
+python3 -m venv env
+source env/bin/activate
+
+pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple ce-dataprep
+
+INFILE=$(basename ${NCFILE})
+
+module load cdo-bin
+which cdo
+
+rsync -v ${NCFILE} ./
+generate_climos -v True -i True -g True ${RES_FLAGS} ${PERIOD_FLAGS} -o output/ -p mean -l DEBUG ${INFILE}
+if [ $? -eq 0 ]; then
+    rsync -rv output/ ${OUTDIR}
+else
+    exit 1
+fi
+"""
+
+PBS_index_bccaqv2 = b"""
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=16:00:00
+
+module load python
+
+pushd $TMPDIR
+python3 -m venv env
+source env/bin/activate
+pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple modelmeta==0.2.0
+
+# Virtualenv with modelmeta installed
+#source $HOME/tmp/indexing_env/bin/activate
+
+index_netcdf -d ${DSN} ${NCFILE}
+"""
 
 
 def main(dsn, dry_run, ensembles, log_level):
@@ -129,7 +149,7 @@ def main(dsn, dry_run, ensembles, log_level):
     Session = sessionmaker(bind=engine)
     sesh = Session()
 
-    vars_ = ("tasmin", "tasmax", "pr", "prsn")
+    vars_ = ("tasmin", "tasmax", "pr")
 
     pcic12 = {
         "CNRM-CM5-r1",
@@ -178,11 +198,8 @@ def main(dsn, dry_run, ensembles, log_level):
         q = q.join(mm.Run)
         q = q.join(mm.Model)
         q = q.join(mm.Emission)
-        #q = q.join(mm.EnsembleDataFileVariables)
-        #q = q.join(mm.Ensemble)
         q = q.filter(DFV.netcdf_variable_name.in_(vars_))
         q = q.filter(TS.multi_year_mean == True)
-        #    q = q.filter(mm.Ensemble.name == 'ce_files')
         q = q.filter(mm.Emission.short_name.op("~")("historical, ?rcp.*"))
         q = q.group_by(
             DFV.netcdf_variable_name,
@@ -227,7 +244,9 @@ def main(dsn, dry_run, ensembles, log_level):
 
         missing_details_with_files = {}
         for (m, varname, rcp), val in missing_details.items():
+            # Search the metadata database for a daily source file available to compute climatologies
             datafile = find_climo_dependency(sesh, *m.split(), varname, rcp)
+            # If one exists in the database, generate the climatologies
             if datafile:
                 datafile = datafile.filename
                 # Dispatch generate_climos job
@@ -237,8 +256,10 @@ def main(dsn, dry_run, ensembles, log_level):
                 if dry_run:
                     logger.info("Dry Run. Not actually dispatching.")
                 else:
-                    subprocess.run(dispatch, shell=True, input=PBS)
+                    subprocess.run(dispatch, shell=True, input=PBS_climo)
                 # Make sure not to run this again until all of the run from the first climo job are indexed
+            # Otherwise, it's *possible* that one exists, but just hasn't been indexed
+            # Search the filesystem... if it's there, index it, otherwise report an error
             else:
                 datafile = (m, varname, rcp)
                 logger.debug("INDEX DAILY: %s %s %s", varname, m, rcp)
@@ -246,7 +267,13 @@ def main(dsn, dry_run, ensembles, log_level):
                 path = '/storage/data/climate/downscale/BCCAQ2/bccaqv2_with_metadata/'
                 fname = os.path.join(path, f'{varname}_day_BCCAQv2+ANUSPLIN300_{model}_{rcp.replace(",", "+")}_{run}_19500101-21001231.nc')
                 if os.path.exists(fname):
-                    logger.info(f'qsub -v NCFILE={fname} -j oe -M hiebert@uvic.ca index_bccaqv2.pbs')
+                    dispatch = f'qsub -v NCFILE={fname},DSN={dsn} -j oe -M hiebert@uvic.ca'
+                    logger.info("Need to dispatch the following index_bccaqv2 job")
+                    logger.info(dispatch)
+                    if dry_run:
+                        logger.info("Dry Run. Not actually dispatching.")
+                    else:
+                        subprocess.run(dispatch, shell=True, input=PBS_index_bccaqv2)
                 else:
                     logger.error("Can't find required file: %s", fname)
             missing_details_with_files[datafile] = val
@@ -256,7 +283,7 @@ def main(dsn, dry_run, ensembles, log_level):
         )
         logger.info(f"Missing counts: {missing_counter}")
         logger.info(f"Missing counts: {missing_length_counter}")
-        logger.info(
+        logger.debug(
             f"List of missing climos: {pformat(missing_details_with_files)}, LENGTH {len(missing_details_with_files)}"
         )
 
