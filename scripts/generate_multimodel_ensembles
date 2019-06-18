@@ -131,6 +131,26 @@ pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple mode
 index_netcdf -d ${DSN} ${NCFILE}
 """
 
+PBS_ensemble_mean = """
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=72:00:00
+
+module load cdo-bin
+
+pushd ${TMPDIR}
+hostname
+pwd
+rsync -v {INFILES} ./
+basename -a {INFILES} {OUTFILE} | xargs cdo ensmean
+# reset the model and run metadata
+# rename the file
+if [ $? -eq 0 ]; then
+    rsync -v {OUTFILE} {OUTDIR}
+else
+    exit 1
+fi
+"""
+
 
 def main(dsn, dry_run, ensembles, log_level):
     '''
@@ -192,6 +212,7 @@ def main(dsn, dry_run, ensembles, log_level):
             TS.time_resolution,
             normalized_rcp,
             aggregate,
+            array_agg(mm.DataFile.filename)
         )
         q = q.join(mm.DataFile.data_file_variables)
         q = q.join(TS)
@@ -222,7 +243,7 @@ def main(dsn, dry_run, ensembles, log_level):
         missing_length_counter = Counter()
         missing_details = defaultdict(lambda: {"period": set(), "resolution": set()})
 
-        for varname, sdate, edate, rez, rcp, model_run in q.all():
+        for varname, sdate, edate, rez, rcp, model_run, filenames in q.all():
             model_run.sort()
             logger.debug(
                 f'{varname} {rez} {rcp} {sdate.strftime("%Y-%m")} {edate.strftime("%Y-%m")} {pformat(model_run, compact=True)}'
@@ -230,6 +251,15 @@ def main(dsn, dry_run, ensembles, log_level):
             model_run = set(model_run)
             if ensemble < model_run:
                 logger.debug("SUCCESS! We can use this!")
+                input_ = PBS_ensemble_mean.format(INFILES=' '.join(filenames), OUTFILE='FIXME.nc', OUTDIR='/storage/data/projects/comp_support/climate_explorer_data_prep/pcic12')
+                dispatch = f'echo "{input_}" | qsub -j oe -M hiebert@uvic.ca'
+                logger.info("Need to dispatch the following ensemble mean job")
+                logger.info(dispatch)
+                if dry_run:
+                    logger.info("Dry Run. Not actually dispatching.")
+                else:
+                    subprocess.run(dispatch, shell=True, input=PBS_ensemble_mean)
+
                 successes += 1
                 # Dispatch multimodel ensmeble job
             else:
