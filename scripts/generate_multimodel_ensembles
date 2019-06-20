@@ -76,13 +76,13 @@ def create_climo_dispatch(fname, periods, resolutions):
         [f"-c {year_to_period((start.year, end.year))}" for start, end in periods]
     )
     params = {
-        "NCFILE": fname,
-        "PERIOD_FLAGS": period_flags,
-        "RES_FLAGS": rez_flags,
-        "OUTDIR": "/storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/pcic12",
+        'NCFILE': fname,
+        'PERIOD_FLAGS': period_flags,
+        'RES_FLAGS': rez_flags,
+        'OUTDIR': '/storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/pcic12'
     }
-    vars = ",".join(f'{key}="{val}"' for key, val in params.items())
-    return f"qsub -j oe -v {vars} -M hiebert@uvic.ca -N gen_climos"
+    vars = ','.join(f'{key}="{val}"' for key, val in params.items())
+    return f'qsub -j oe -v {vars} -M hiebert@uvic.ca -N gen_climos'
 
 
 PBS_climo = b"""
