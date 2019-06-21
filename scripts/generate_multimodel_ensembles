@@ -7,6 +7,8 @@ from collections import Counter, defaultdict
 import subprocess
 import logging
 import argparse
+import datetime
+import yaml
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -133,23 +135,59 @@ index_netcdf -d ${DSN} ${NCFILE}
 
 PBS_ensemble_mean = """
 #PBS -l nodes=1:ppn=1
-#PBS -l walltime=72:00:00
+#PBS -l walltime=01:00:00
 
 module load cdo-bin
+module load nco-bin
 
-pushd ${TMPDIR}
+pushd ${{TMPDIR}}
 hostname
 pwd
 rsync -v {INFILES} ./
 basename -a {INFILES} {OUTFILE} | xargs cdo ensmean
+
 # reset the model and run metadata
+{NCATTED}
+
 # rename the file
+module load python
+python3 -m venv env
+source env/bin/activate
+pip install -U pip && pip install -i https://pypi.pacificclimate.org/simple nchelpers
+
+newfile=$(echo "import nchelpers
+with nchelpers.CFDataset('{OUTFILE}') as f:
+    print(f.cmor_filename)
+" | python)
+
+mv {OUTFILE} ${{newfile}}
+
 if [ $? -eq 0 ]; then
-    rsync -v {OUTFILE} {OUTDIR}
+    rsync -v ${{newfile}} {OUTDIR}
 else
     exit 1
 fi
 """
+
+
+def rewrite_metadata(ensemble_name):
+    '''Returns YAML necessary for input to update_metadata script
+       ensemble_name is one of (PCIC12|PCIC9)
+    '''
+    yaml = {
+        'model_id': f'ensemble: {ensemble_name.upper()}',
+        # It would be proper to attribute this w/ the different
+        # realizations that went into the PCIC12, however, there's
+        # probably lots of formatting code out there that depends on
+        # it being concise
+        'GCM__realization': 'X',
+        'creation_date': datetime.datetime.utcnow().isoformat(timespec='seconds'),
+        'GCM__institution': 'Pacific Climate Impacts Consortium'
+    }
+    yaml.update(
+        {f'GCM__{attr}': ensemble_name.upper() for attr in ('institute_id', 'model_id')}
+    )
+    return {'global': yaml}
 
 
 def main(dsn, dry_run, ensembles, log_level):
@@ -251,14 +289,18 @@ def main(dsn, dry_run, ensembles, log_level):
             model_run = set(model_run)
             if ensemble < model_run:
                 logger.debug("SUCCESS! We can use this!")
-                input_ = PBS_ensemble_mean.format(INFILES=' '.join(filenames), OUTFILE='FIXME.nc', OUTDIR='/storage/data/projects/comp_support/climate_explorer_data_prep/pcic12')
+                OUTFILE = 'FIXME.nc'
+                metadata = rewrite_metadata(ensname)
+                ncatted = '\n'.join([f'ncatted -O -a {name},global,m,c,"{value}" {OUTFILE}' for name, value in metadata['global'].items()])
+                input_ = PBS_ensemble_mean.format(INFILES=' '.join(filenames), OUTFILE=OUTFILE, OUTDIR='/storage/data/projects/comp_support/climate_explorer_data_prep/climatological_means/pcic12/', NCATTED=ncatted)
                 dispatch = f'echo "{input_}" | qsub -j oe -M hiebert@uvic.ca'
                 logger.info("Need to dispatch the following ensemble mean job")
                 logger.info(dispatch)
                 if dry_run:
                     logger.info("Dry Run. Not actually dispatching.")
                 else:
-                    subprocess.run(dispatch, shell=True, input=PBS_ensemble_mean)
+                    dispatch = 'qsub -j oe -M hiebert@uvic.ca'
+                    subprocess.run(dispatch, shell=True, input=bytes(input_, 'utf-8'))
 
                 successes += 1
                 # Dispatch multimodel ensmeble job
