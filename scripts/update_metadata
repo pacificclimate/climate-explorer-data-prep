@@ -5,6 +5,7 @@ WARNING: THIS SCRIPT MODIFIES THE ORIGINAL FILE.
 
 See README for details of update specification file (YAML format).
 """
+import sys
 from argparse import ArgumentParser
 import logging
 
@@ -27,5 +28,7 @@ if __name__ == '__main__':
         help='NetCDF file to update'
     )
     args = parser.parse_args()
+    if args.updates == '-':
+        args.updates = sys.stdin
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
