@@ -186,17 +186,38 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
         }[tiny_dataset.time_resolution]
 
 
-@mark.parametrize('tiny_dataset, t_start, t_end', [
-    ('gdd_seasonal', t_start(2070), t_end(2099)),
-    ('gdd_seasonal', t_start(2030), t_end(2069)),
-    ('fd_monthly', t_start(1971), t_end(2000)),
+@mark.parametrize('tiny_dataset, comparison', [
+    ('gdd_seasonal', 'greatermean'),
+    ('fd_monthly', 'greatermean'),
+    ('txx_monthly', 'greatermin'),
+    ('tnn_monthly', 'lessermax')
 ], indirect=['tiny_dataset'])
-def test_counted_variable_values(outdir, tiny_dataset, t_start, t_end):
-    """Test that values are roughly in range for "counted" variables. Values for
-    these variables are summed into larger intermediate values before
-    climatologies are made. This test checks that longer periods have larger
-    values. NOTE: variables that have an extreme % change over time may
-    have false failures on this test."""
+@mark.parametrize('t_start, t_end', [
+    (t_start(1971), t_end(2000)),
+    (t_start(2010), t_end(2039))
+    ])
+def test_variable_aggregation(outdir, tiny_dataset, comparison, t_start, t_end):
+    """Test that the values for variables aggregated within a year are
+    in the expected range. For these variables, the value of a year is
+    *not* the mean of the monthly or seasonal values. Checks to make
+    sure the distribution of values in seasonal or annual data varies
+    from the distribution of monthly data in the expected direction by
+    comparing output mins, means, or maxes, to input mins, means, or maxes.
+    Note that there is possible weirdness to comparing the *entire* input
+    timeseries to a specific output time period: a variable whose range
+    shifts dramatically over time could possibly have false failures
+    if used for this test.
+    When aggregated from monthly or seasonal scale to yearly scale:
+     - Counted variables should have larger means, minimums, and maximums.
+     - Maximum variables should have larger minimums and means but similar 
+       maximums.
+     - Minimum variables should have smaller maximums and means but similar
+       minimums."""
+    test = {
+        "greatermean": lambda a, b : a.mean() > b.mean(),
+        "greatermin": lambda a, b: a.min() > b.min(),
+        "lessermax": lambda a, b: a.max() < b.max()
+        }[comparison]
     climo_files = create_climo_files(outdir, tiny_dataset, "mean",
                                      t_start, t_end, split_vars=False,
                                      split_intervals=True)
@@ -212,7 +233,7 @@ def test_counted_variable_values(outdir, tiny_dataset, t_start, t_end):
                 inres = timeres_ordinality[tiny_dataset.time_resolution]
                 outres = timeres_ordinality[out.time_resolution]
                 if outres > inres:
-                    assert outvar.mean() >= invar.mean()
+                    assert test(outvar, invar)
 
 
 @mark.parametrize('tiny_dataset, operation, t_start, t_end', [
