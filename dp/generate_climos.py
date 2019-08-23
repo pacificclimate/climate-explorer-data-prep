@@ -112,6 +112,13 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     # Count variables represent the number of times something happens within
     # a period. Data is aggregated across a longer time period by summing it.
 
+    # Maximum variables represent the largest value recorded over the period
+    # of time. Data is aggregated across a longer period by taking the maximum
+    # of the constituent periods' values.
+
+    # Minimum variables represent the smallest value recorded over a set period;
+    # the value for an aggregated period is the minimum of the constituent periods.
+
     # Duration variables represent the length of a continuous period of time
     # that meets certain qualifications.
     # These variables cannot be aggregated across a longer time period without
@@ -155,19 +162,19 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'r20mmETCCDI': 'count',
         'r95pETCCDI': 'count',
         'r99pETCCDI': 'count',
-        'rx1dayETCCDI': 'point',
-        'rx5dayETCCDI': 'point',
+        'rx1dayETCCDI': 'maximum',
+        'rx5dayETCCDI': 'maximum',
         'sdiiETCCDI': 'point',
         'suETCCDI': 'count',
         'tn10pETCCDI': 'point',
         'tn90pETCCDI': 'point',
-        'tnnETCCDI': 'point',
-        'tnxETCCDI': 'point',
+        'tnnETCCDI': 'minimum',
+        'tnxETCCDI': 'maximum',
         'trETCCDI': 'count',
         'tx10pETCCDI': 'point',
         'tx90pETCCDI': 'point',
-        'txnETCCDI': 'point',
-        'txxETCCDI': 'point',
+        'txnETCCDI': 'minimum',
+        'txxETCCDI': 'maximum',
         'wsdiETCCDI': 'duration',
         # Degree Day Variables
         'cdd': 'count',
@@ -248,18 +255,19 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     if var_type == 'point':
         # cdo can handle these variables in a single step
         climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, True, output_resolutions)
-    elif var_type == 'count':
+    elif var_type in ['count', 'maximum', 'minimum']:
         # cdo's ymon* climatology-creating operations assume means for
         # constructing subyear aggregate datasets (like making a monthly
         # dataset from a daily dataset).
-        # Count variables should be summed, not meaned, to aggregate within a
-        # year. Construct the aggregate datasets explicitly with a separate
-        # cdo command, then calculate climatologies - disallowing further
-        # aggregation - from them.
-        aggregations = generate_counted_aggregates(temporal_subset, input_file)
+        # For these variables, the value of a year is *not* the mean of the
+        # monthly or daily values. Therefore, the sub-year aggregate datasets
+        # need to be explicitly contructed with a separate cdo command, before
+        # calculating climatologies from them.
+        aggregations = generate_aggregates(temporal_subset, input_file, var_type)
         climo_files = []
         for res in aggregations:
             climo_files.extend(climo_outputs(res, operation, aggregations[res], False, output_resolutions))
+
     elif var_type == 'duration':
         # Sub-year aggregation cannot be performed at all with these variables.
         # We can only generate climatologies at the resolution received.
@@ -367,26 +375,37 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
 
     return times, climo_bounds
 
+def generate_aggregates(data, input_file, var_type):
+    """Generates aggregated datasets with resolutions [monthly, seasonal, yearly]
+    as possible from a dataset with a higher time resolution.
 
-def generate_counted_aggregates(data, input_file):
-    """Generates datasets with resolutions [monthly, seasonal, yearly] as possible
-    from a counted variable dataset with a higher time resolution. Counted
-    datasets count the number of times some event occurs over a time period, so
-    the value of a longer time period is the sum of the values of its
-    constitutents. Returns a dictionary of resolutions and datasets, including
-    the initial dataset if it matches one of the target resolutions."""
+    This function is required for the variables where the value of the variable
+    over a longer time period is not the mean of the values of of the variable
+    over the constituent time periods.
+
+    counted variables: represent the number of times something happens
+                       value of period is sum of values of constituent periods
+
+    maximum variables: represent the largest value recorded
+                       value of period is maximum of constituent period values
+
+    minimum variables: represent the smallest value recorded
+                       value of period is minimum of constituent period values
+    """
 
     logger.info("Generating intermediate aggregate files")
+    aggregator = {"count": "sum", "maximum": "max", "minimum": "min"}[var_type]
     aggregations = {}
+
     if input_file.time_resolution != "daily":
         aggregations[input_file.time_resolution] = data
 
     if input_file.time_resolution in ["daily", "monthly", "seasonal"]:
-        aggregations["yearly"] = cdo.yearsum(input=data)
+        aggregations["yearly"] = getattr(cdo, "year" + aggregator)(input=data)
     if input_file.time_resolution in ["daily", "monthly"]:
-        aggregations["seasonal"] = cdo.seassum(input=data)
+        aggregations["seasonal"] = getattr(cdo, "seas" + aggregator)(input=data)
     if input_file.time_resolution == "daily":
-        aggregations["monthly"] = cdo.monsum(input=data)
+        aggregations["monthly"] = getattr(cdo, "mon" + aggregator)(input=data)
 
     return aggregations
 
