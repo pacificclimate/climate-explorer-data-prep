@@ -148,6 +148,8 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'SWE': 'point',
         'SWE_BAND': 'point',
         'TRANSP_VEG': 'point',
+        # Hydrological outputs
+        'streamflow': 'point',
         # Climdex variables
         'cddETCCDI': 'duration',
         'csdiETCCDI': 'duration',
