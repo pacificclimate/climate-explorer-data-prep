@@ -8,10 +8,12 @@ language: python
 python:
   - 3.6
   - 3.7
-#addons:
-#  apt:
-#    packages:
-#      - cdo
+addons:
+  apt:
+    packages:
+      #- cdo
+      - libhdf5-serial-dev
+      - libnetcdf-dev
 install:
   - pip install -I pytest>=3.0.0
   - pip install -i https://pypi.pacificclimate.org/simple/ .
