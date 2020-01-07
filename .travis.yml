@@ -2,15 +2,18 @@
 # just too hard: NetCDF support isn't built into the debian cdo pacakges.
 # Once that is resolved (i.e., install the NetCDF support before installing cdo), the commented out code can be
 # uncommented and the full test suite can be run. For now we just run the non cdo dependent tests.
-language: python
-dist: trusty
+dist: bionic
 sudo: false
-#addons:
-#  apt:
-#    packages:
-#      - cdo
+language: python
 python:
-  - 3.5
+  - 3.6
+  - 3.7
+addons:
+  apt:
+    packages:
+      #- cdo
+      - libhdf5-serial-dev
+      - libnetcdf-dev
 install:
   - pip install -I pytest>=3.0.0
   - pip install -i https://pypi.pacificclimate.org/simple/ .
