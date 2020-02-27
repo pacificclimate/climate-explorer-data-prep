@@ -7,13 +7,22 @@ node {
     }
 
     stage('Python Test Suite') {
-        def pytestArgs = '-v tests/test_units_helpers.py tests/test_update_metadata.py tests/test_decompose_flow_vectors.py'
-        runPythonTestSuite('pcic/geospatial-python', ['requirements.txt'], pytestArgs)
+        def options = [aptPackages: ['cdo']]
+        def pytestArgs = '-v --ignore=tests/test_decompose_flow_vectors.py'
+        parallel "Python 3.6": {
+            runPythonTestSuite('pcic/crmprtd-test-env:python-3.6',
+                               ['requirements.txt'], pytestArgs, options)
+        },
+        "Python 3.7": {
+            runPythonTestSuite('pcic/crmprtd-test-env:python-3.7',
+                               ['requirements.txt'], pytestArgs, options)
+        }
     }
 
     if (isPypiPublishable()) {
         stage('Push to PYPI') {
-            publishPythonPackage('pcic/geospatial-python', 'PCIC_PYPI_CREDS')
+            publishPythonPackage('pcic/crmprtd-test-env:python-3.6',
+                                 'PCIC_PYPI_CREDS')
         }
     }
 
