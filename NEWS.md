@@ -1,5 +1,12 @@
 # News / Release Notes
 
+## 0.8.0
+*2020 Feb 27*
+
+* Adds ability to generate climos for extreme indexes calculated as minimumg or maximums over time to generate_climos
+* Adds support for streamflow climatologies to generate_climos
+* Adds Jenkinsfiles for automatic testing and deployment to pypi
+
 ## 0.7.0
 
 *2019 Jun 14*
