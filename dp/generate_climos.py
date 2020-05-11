@@ -442,11 +442,14 @@ def convert_flux_var_units(input_file, climo_data):
         flux_variable = input_file.variables[flux_var]
         units = Unit.from_udunits_str(flux_variable.units)
 
-        if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
-            logger.info("Converting {} variable to units mm/day".format(flux_var))
+        if units in [Unit('kg / m**2 / s'), Unit('mm / s'), Unit('g / cm**2 / s'), Unit('cm / s')]:
+            if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
+                logger.info("Converting {} variable to units mm/day".format(flux_var))
+            else:
+                logger.info("Converting {} variable to units cm/day".format(flux_var))
             # Update units attribute
             attributes['units'] = (units * Unit('s / day')).to_udunits_str()
-            # Multiply values by 86400 to convert from mm/s to mm/day
+            # Multiply values by 86400 to convert from mm/s to mm/day or from cm/s to cm/day
             seconds_per_day = 86400
 
             if hasattr(flux_variable, 'scale_factor') or hasattr(flux_variable, 'add_offset'):
@@ -463,7 +466,7 @@ def convert_flux_var_units(input_file, climo_data):
                 # This is not a packed file; modify the values proper
                 # Extract variable
                 var_only = cdo.select('name={}'.format(flux_var), input=climo_data)
-                # Multiply values by 86400 to convert from mm/s to mm/day
+                # Multiply values by 86400 to convert from mm/s to mm/day or from cm/s to cm/day
                 var_only = cdo.mulc(str(seconds_per_day), input=var_only)
                 # Replace pr in all-variables file
                 climo_data = cdo.replace(input=[climo_data, var_only])

@@ -67,7 +67,7 @@ def test_create_prsn_netcdf_from_source(tiny_dataset, fake_dataset):
     assert np.shape(fake_dataset.variables['prsn']) == (11688, 4, 2)
     assert fake_dataset.variables['prsn'].standard_name == 'snowfall_flux'
     assert fake_dataset.variables['prsn'].long_name == 'Precipitation as Snow'
-
+    assert fake_dataset.variables['prsn'].units == 'g cm-2 s-1'
 
 @pytest.mark.parametrize('tiny_dataset, new_var, expected', [
     ('downscaled_pr', 'prsn', 'prsn_day_BCCAQ2_ACCESS1-0_ACCESS1-0+historical+rcp45+r1i1p1_r1i1p1_19600101-19911231.nc'),

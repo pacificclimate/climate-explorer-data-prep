@@ -95,6 +95,7 @@ def create_prsn_netcdf_from_source(src, dst, to_delete=['original_name, comment'
 
     prsn_var.standard_name = 'snowfall_flux'
     prsn_var.long_name = 'Precipitation as Snow'
+    prsn_var.units = 'g cm-2 s-1'
 
     for item in set(to_delete):
         if hasattr(prsn_var, item):
@@ -166,8 +167,14 @@ def check_pr_units(pr_units):
     valid_units = [
         Unit('kg / m**2 / s'),
         Unit('mm / s'),
+	Unit('mm / d'),
         Unit('kg / d / m**2'),
-        Unit('kg / m**2 / d')
+        Unit('kg / m**2 / d'),
+	Unit('g / cm**2 / s'),
+	Unit('cm / s'),
+	Unit('cm / d'),
+	Unit('g / d / cm**2'),
+	Unit('g / cm**2 / d')
     ]
     units = Unit.from_udunits_str(pr_units)
     return units in valid_units
@@ -222,6 +229,11 @@ def process_to_prsn(variables, output_dataset, max_chunk_len):
             }
         means = np.mean([chunk_data['tasmin'], chunk_data['tasmax']], axis=0)
         prsn_data = np.where(means < freezing, chunk_data['pr'], 0)
+
+        prsn_units_from = ureg.parse_units('kg/m^2/s')
+        prsn_units_to = ureg.parse_units('g/cm^2/s')
+        prsn_data = prsn_data * Q_(1.0, prsn_units_from).to(prsn_units_to).magnitude	
+
         output_dataset.variables['prsn'][chunk] = prsn_data
 
 
