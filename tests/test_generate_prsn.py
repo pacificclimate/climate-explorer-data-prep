@@ -11,7 +11,10 @@ from dp.generate_prsn import unique_shape, is_unique_value, \
     pr_freezing_from_units, create_prsn_netcdf_from_source, \
     create_filepath_from_source, has_required_vars, matching_datasets, \
     check_pr_units, process_to_prsn, convert_temperature_units
+from pint import UnitRegistry
 
+ureg = UnitRegistry()
+Q_ = ureg.Quantity
 
 @pytest.mark.parametrize('arrays', [
     ({'shape1': np.arange(10).reshape(2, 5), 'shape2': np.arange(10).reshape(2, 5)}),
@@ -150,6 +153,13 @@ def test_process_to_prsn(pr, tasmin, tasmax, fake_dataset):
     result = np.where(result != 0)
     for array in result:
         assert len(array) == 0
+
+    # Test conversion from mm to cm
+    pr_mm = pr_dataset.variables['pr'][:]
+    pr_units_from = ureg.parse_units('kg/m^2/s')
+    pr_units_to = ureg.parse_units('g/cm^2/s')
+    pr_cm = pr_mm * Q_(1.0, pr_units_from).to(pr_units_to).magnitude
+    assert pr_cm == pytest.approx(pr_mm/10.0)
 
 
 @pytest.mark.parametrize('units_from, units_to, expected', [
