@@ -442,13 +442,11 @@ def convert_flux_var_units(input_file, climo_data):
         flux_variable = input_file.variables[flux_var]
         units = Unit.from_udunits_str(flux_variable.units)
 
-        if units in [Unit('kg / m**2 / s'), Unit('mm / s'), Unit('g / cm**2 / s'), Unit('cm / s')]:
-            if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
-                logger.info("Converting {} variable to units mm/day".format(flux_var))
-            else:
-                logger.info("Converting {} variable to units cm/day".format(flux_var))
+        precip_units = [Unit('kg / m**2 / s'), Unit('mm / s'), Unit('g / cm**2 / s'), Unit('cm / s')]
+        if units in precip_units:
             # Update units attribute
             attributes['units'] = (units * Unit('s / day')).to_udunits_str()
+            logger.info(f"Converting {flux_var} variable to units {attributes['units']}")
             # Multiply values by 86400 to convert from mm/s to mm/day or from cm/s to cm/day
             seconds_per_day = 86400
 

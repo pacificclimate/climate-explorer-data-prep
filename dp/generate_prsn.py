@@ -164,18 +164,9 @@ def convert_temperature_units(data, units_from, units_to):
 
 def check_pr_units(pr_units):
     '''Ensure we have expected pr units'''
-    valid_units = [
-        Unit('kg / m**2 / s'),
-        Unit('mm / s'),
-	Unit('mm / d'),
-        Unit('kg / d / m**2'),
-        Unit('kg / m**2 / d'),
-	Unit('g / cm**2 / s'),
-	Unit('cm / s'),
-	Unit('cm / d'),
-	Unit('g / d / cm**2'),
-	Unit('g / cm**2 / d')
-    ]
+    valid_units = ['kg / m**2 / s', 'kg / m**2 / d', 'kg / d / m**2', 'mm / s', 'mm / d', \
+    'g / cm**2 / s', 'g / cm**2 / d', 'g / d / cm**2', 'cm / s', 'cm / d']
+    valid_units = [Unit(u) for u in valid_units]
     units = Unit.from_udunits_str(pr_units)
     return units in valid_units
 
@@ -232,9 +223,9 @@ def process_to_prsn(variables, output_dataset, max_chunk_len):
 
         prsn_units_from = ureg.parse_units('kg/m^2/s')
         prsn_units_to = ureg.parse_units('g/cm^2/s')
-        prsn_data = prsn_data * Q_(1.0, prsn_units_from).to(prsn_units_to).magnitude	
 
-        output_dataset.variables['prsn'][chunk] = prsn_data
+        output_dataset.variables['prsn'][chunk] = prsn_data * \
+        Q_(1.0, prsn_units_from).to(prsn_units_to).magnitude
 
 
 def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
