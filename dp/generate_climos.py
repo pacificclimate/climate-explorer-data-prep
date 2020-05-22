@@ -670,6 +670,38 @@ def update_metadata_and_time_var(
 
             return t1 > t2
 
+        def update_hisotry(history, start, end):
+            """This function takes the start time and end time history-attribute-lines
+            of generate_climos command. It returns a string of the entire history
+            attribute. The result indicates when the generate_climos started and ended.
+            For example:
+
+            :history = "Thu May 21 11:12:05: end: generate_climos ..." <--- end of genereate_climos
+            "Thu May 21 11:12:05 2020: cdo -O -replace ..."
+                "Thu May 21 11:12:04 2020: cdo -O -timmean ..." 
+                "Thu May 21 11:12:04 2020: cdo -O -seldate ..."
+                "Thu May 21 11:12:04: start: generate_climos ..." <--- start of genereate_climos
+                "Thu Mar 21 14:49:01 2019: cdo sellonlatbox ..."
+                "Thu Sep  1 14:34:03 2016: ncrcat ..."
+                "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."
+                
+                ...
+
+            """
+            history_li = history.split("\n")
+            for idx, h in enumerate(history_li):
+                if compare_times(t_start_generate_climos, h[:24]):
+                    history_li.insert(idx, start)
+                    break
+
+            history_str = ""
+            for h in history_li:
+                history_str += h + "\n"
+
+            history_str = end + "\n" + history_str
+
+            return history_str
+
         # Update history attribute
         if hasattr(input_file, "history"):
             start = (
@@ -683,7 +715,7 @@ def update_metadata_and_time_var(
             )
             end = (
                 t_end_generate_climos
-                + ": finish : generate_climos -o"
+                + ": end : generate_climos -o"
                 + outdir
                 + " "
                 + filepath
@@ -691,19 +723,7 @@ def update_metadata_and_time_var(
                 + operation
             )
 
-            history_li = cf.history.split("\n")
-            for idx, h in enumerate(history_li):
-                if compare_times(t_start_generate_climos, h[:24]):
-                    history_li.insert(idx, start)
-                    break
-
-            s = ""
-            for h in history_li:
-                s += h + "\n"
-
-            s = end + "\n" + s
-
-            cf.history = s
+            cf.history = update_hisotry(cf.history, start, end)
 
         # Deduce the set of averaging intervals from the number of times in the file.
         # WARNING: This is fragile, and depends on the assumption that a climo output file contains only the following
