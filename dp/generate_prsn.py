@@ -95,6 +95,7 @@ def create_prsn_netcdf_from_source(src, dst, to_delete=['original_name, comment'
 
     prsn_var.standard_name = 'snowfall_flux'
     prsn_var.long_name = 'Precipitation as Snow'
+    prsn_var.units = 'g cm-2 s-1'
 
     for item in set(to_delete):
         if hasattr(prsn_var, item):
@@ -163,12 +164,9 @@ def convert_temperature_units(data, units_from, units_to):
 
 def check_pr_units(pr_units):
     '''Ensure we have expected pr units'''
-    valid_units = [
-        Unit('kg / m**2 / s'),
-        Unit('mm / s'),
-        Unit('kg / d / m**2'),
-        Unit('kg / m**2 / d')
-    ]
+    valid_units = ['kg / m**2 / s', 'kg / m**2 / d', 'kg / d / m**2', 'mm / s', 'mm / d', \
+    'g / cm**2 / s', 'g / cm**2 / d', 'g / d / cm**2', 'cm / s', 'cm / d']
+    valid_units = [Unit(u) for u in valid_units]
     units = Unit.from_udunits_str(pr_units)
     return units in valid_units
 
@@ -222,7 +220,12 @@ def process_to_prsn(variables, output_dataset, max_chunk_len):
             }
         means = np.mean([chunk_data['tasmin'], chunk_data['tasmax']], axis=0)
         prsn_data = np.where(means < freezing, chunk_data['pr'], 0)
-        output_dataset.variables['prsn'][chunk] = prsn_data
+
+        prsn_units_from = ureg.parse_units('kg/m^2/s')
+        prsn_units_to = ureg.parse_units('g/cm^2/s')
+
+        output_dataset.variables['prsn'][chunk] = prsn_data * \
+        Q_(1.0, prsn_units_from).to(prsn_units_to).magnitude
 
 
 def generate_prsn_file(filepaths, chunk_size, outdir, output_file=None):
