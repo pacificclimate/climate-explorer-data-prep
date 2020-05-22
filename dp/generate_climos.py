@@ -691,8 +691,10 @@ def update_metadata_and_time_var(
             history_li = history.split("\n")
             for idx, h in enumerate(history_li):
                 if compare_times(t_start_generate_climos, h[:24]):
-                    history_li.insert(idx, start)
                     break
+                if idx == len(history_li)-1:
+                    idx += 1
+            history_li.insert(idx, start)
 
             history_str = ""
             for h in history_li:
