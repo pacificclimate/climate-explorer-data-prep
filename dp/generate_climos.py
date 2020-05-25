@@ -6,6 +6,7 @@ import warnings
 
 from datetime import datetime
 import dateutil.parser
+import calendar
 import numpy as np
 import re
 
@@ -538,26 +539,13 @@ def update_metadata_and_time_var(input_file, outdir, filepath, t_start, t_end, o
             it returns False. If the second input is not in the format desired, the
             function automatically returns True.
             """
-            months = {
-                "Jan": 1,
-                "Feb": 2,
-                "Mar": 3,
-                "Apr": 4,
-                "May": 5,
-                "Jun": 6,
-                "Jul": 7,
-                "Aug": 8,
-                "Sep": 9,
-                "Oct": 10,
-                "Nov": 11,
-                "Dec": 12,
-            }
+            months = calendar.month_abbr[:]
             t1 = re.split(":|  | ", t1)
             t2 = re.split(":|  | ", t2)
 
             t1 = datetime(
                 int(t1[6]),
-                months[t1[1]],
+                months.index(t1[1]),
                 int(t1[2]),
                 int(t1[3]),
                 int(t1[4]),
@@ -566,7 +554,7 @@ def update_metadata_and_time_var(input_file, outdir, filepath, t_start, t_end, o
             try:
                 t2 = datetime(
                     int(t2[6]),
-                    months[t2[1]],
+                    months.index(t2[1]),
                     int(t2[2]),
                     int(t2[3]),
                     int(t2[4]),
