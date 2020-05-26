@@ -24,7 +24,9 @@ from dp.units_helpers import Unit
 
 
 # Set up logging
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', "%Y-%m-%d %H:%M:%S")
+formatter = logging.Formatter(
+    "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
@@ -36,9 +38,17 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def create_climo_files(outdir, input_file, operation, t_start, t_end,
-                       convert_longitudes=True, split_vars=True, split_intervals=True,
-                       output_resolutions={'yearly', 'seasonal', 'monthly'}):
+def create_climo_files(
+    outdir,
+    input_file,
+    operation,
+    t_start,
+    t_end,
+    convert_longitudes=True,
+    split_vars=True,
+    split_intervals=True,
+    output_resolutions={"yearly", "seasonal", "monthly"},
+):
     """Generate climatological files from an input file and a selected time range.
 
     Parameters:
@@ -92,6 +102,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     output file name will be misleading.
 
     """
+
     def curr_time_cdo_format():
         """This function returns current time in the format of
         cdo's history attribute.
@@ -102,10 +113,10 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     logger.info("Start of generate_climos")
     t_start_generate_climos = curr_time_cdo_format()
 
-    logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
+    logger.info("Generating climo period %s to %s", d2s(t_start), d2s(t_end))
 
     if input_file.is_multi_year:
-        raise Exception('This file already contains climatologies')
+        raise Exception("This file already contains climatologies")
 
     validate_operation(operation)
 
@@ -143,65 +154,67 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
 
     variable_types = {
         # Standard climate variables
-        'tasmin': 'point',
-        'tasmax': 'point',
-        'pr': 'point',
+        "tasmin": "point",
+        "tasmax": "point",
+        "pr": "point",
         # Hydrological modelling variables
-        'BASEFLOW': 'point',
-        'EVAP': 'point',
-        'GLAC_AREA_BAND': 'point',
-        'GLAC_MBAL_BAND': 'point',
-        'GLAC_OUTFLOW': 'point',
-        'PET_NATVEG': 'point',
-        'PREC': 'point',
-        'RAINF': 'point',
-        'RUNOFF': 'point',
-        'SNOW_MELT': 'point',
-        'SOIL_MOIST_TOT': 'point',
-        'SWE': 'point',
-        'SWE_BAND': 'point',
-        'TRANSP_VEG': 'point',
+        "BASEFLOW": "point",
+        "EVAP": "point",
+        "GLAC_AREA_BAND": "point",
+        "GLAC_MBAL_BAND": "point",
+        "GLAC_OUTFLOW": "point",
+        "PET_NATVEG": "point",
+        "PREC": "point",
+        "RAINF": "point",
+        "RUNOFF": "point",
+        "SNOW_MELT": "point",
+        "SOIL_MOIST_TOT": "point",
+        "SWE": "point",
+        "SWE_BAND": "point",
+        "TRANSP_VEG": "point",
         # Hydrological outputs
-        'streamflow': 'point',
+        "streamflow": "point",
         # Climdex variables
-        'cddETCCDI': 'duration',
-        'csdiETCCDI': 'duration',
-        'cwdETCCDI': 'duration',
-        'dtrETCCDI': 'point',
-        'fdETCCDI': 'count',
-        'gslETCCDI': 'duration',
-        'idETCCDI': 'count',
-        'prcptotETCCDI': 'count',
-        'r10mmETCCDI': 'count',
-        'r1mmETCCDI': 'count',
-        'r20mmETCCDI': 'count',
-        'r95pETCCDI': 'count',
-        'r99pETCCDI': 'count',
-        'rx1dayETCCDI': 'maximum',
-        'rx5dayETCCDI': 'maximum',
-        'sdiiETCCDI': 'point',
-        'suETCCDI': 'count',
-        'tn10pETCCDI': 'point',
-        'tn90pETCCDI': 'point',
-        'tnnETCCDI': 'minimum',
-        'tnxETCCDI': 'maximum',
-        'trETCCDI': 'count',
-        'tx10pETCCDI': 'point',
-        'tx90pETCCDI': 'point',
-        'txnETCCDI': 'minimum',
-        'txxETCCDI': 'maximum',
-        'wsdiETCCDI': 'duration',
+        "cddETCCDI": "duration",
+        "csdiETCCDI": "duration",
+        "cwdETCCDI": "duration",
+        "dtrETCCDI": "point",
+        "fdETCCDI": "count",
+        "gslETCCDI": "duration",
+        "idETCCDI": "count",
+        "prcptotETCCDI": "count",
+        "r10mmETCCDI": "count",
+        "r1mmETCCDI": "count",
+        "r20mmETCCDI": "count",
+        "r95pETCCDI": "count",
+        "r99pETCCDI": "count",
+        "rx1dayETCCDI": "maximum",
+        "rx5dayETCCDI": "maximum",
+        "sdiiETCCDI": "point",
+        "suETCCDI": "count",
+        "tn10pETCCDI": "point",
+        "tn90pETCCDI": "point",
+        "tnnETCCDI": "minimum",
+        "tnxETCCDI": "maximum",
+        "trETCCDI": "count",
+        "tx10pETCCDI": "point",
+        "tx90pETCCDI": "point",
+        "txnETCCDI": "minimum",
+        "txxETCCDI": "maximum",
+        "wsdiETCCDI": "duration",
         # Degree Day Variables
-        'cdd': 'count',
-        'fdd': 'count',
-        'gdd': 'count',
-        'hdd': 'count',
+        "cdd": "count",
+        "fdd": "count",
+        "gdd": "count",
+        "hdd": "count",
         # Plan2Adapt Variables
-        'prsn': 'point'
+        "prsn": "point",
     }
 
     try:
-        var_types = {variable_types[variable] for variable in input_file.dependent_varnames()}
+        var_types = {
+            variable_types[variable] for variable in input_file.dependent_varnames()
+        }
     except KeyError as e:
         raise Exception("Unsupported variable: can't yet process {}".format(e.args[0]))
 
@@ -210,16 +223,23 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     var_type = list(var_types)[0]
 
     # Select the temporal subset defined by t_start, t_end
-    logger.info('Selecting temporal subset')
-    date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
+    logger.info("Selecting temporal subset")
+    date_range = "{},{}".format(d2s(t_start), d2s(t_end))
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
 
     # Update generate_climos history attribute
-    temporal_subset = update_generate_climos_history(temporal_subset, t_start_generate_climos, 1)
+    temporal_subset = update_generate_climos_history(
+        temporal_subset, t_start_generate_climos, 1
+    )
 
     # Form climatological means/standard deviations over dependent variables
-    def climo_outputs(time_resolution, operation, data, aggregate=True,
-            output_resolutions={'monthly', 'seasonal', 'yearly'}):
+    def climo_outputs(
+        time_resolution,
+        operation,
+        data,
+        aggregate=True,
+        output_resolutions={"monthly", "seasonal", "yearly"},
+    ):
         """Return a list of cdo operators that generate the desired climo outputs.
         Result depends on the time resolution of input file data. If
         aggregate is false, only operations that generate climatologies at
@@ -227,53 +247,66 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         data will be aggregated daily -> monthly -> seasonal -> yearly.
         """
         if time_resolution == "daily" and not aggregate:
-            raise Exception("Cannot generate non-aggregated climatologies from a daily dataset")
+            raise Exception(
+                "Cannot generate non-aggregated climatologies from a daily dataset"
+            )
 
         climo_ops = {
-            'daily': {},
-            'monthly': {'monthly': 'ymon' + operation},
-            'seasonal': {'seasonal': 'yseas' + operation},
-            'yearly': {'yearly': 'tim' + operation}
-            }
+            "daily": {},
+            "monthly": {"monthly": "ymon" + operation},
+            "seasonal": {"seasonal": "yseas" + operation},
+            "yearly": {"yearly": "tim" + operation},
+        }
         aggregate_climo_ops = {
-            'daily': {
-                'monthly': 'ymon' + operation,
-                'seasonal': 'yseas' + operation,
-                'yearly': 'tim' + operation
+            "daily": {
+                "monthly": "ymon" + operation,
+                "seasonal": "yseas" + operation,
+                "yearly": "tim" + operation,
             },
-            'monthly': {
-                'seasonal': 'yseas' + operation,
-                'yearly': 'tim' + operation
-            },
-            'seasonal': {'yearly': 'tim' + operation},
-            'yearly': {}
-            }
+            "monthly": {"seasonal": "yseas" + operation, "yearly": "tim" + operation},
+            "seasonal": {"yearly": "tim" + operation},
+            "yearly": {},
+        }
         operations = climo_ops[time_resolution]
         if aggregate:
             operations.update(aggregate_climo_ops[time_resolution])
         # Filter the operations by resolution to create
-        operations = [operations[rez] for rez in output_resolutions if rez in operations]
+        operations = [
+            operations[rez] for rez in output_resolutions if rez in operations
+        ]
 
         # It's possible that the set of user selected output
         # resolutions is disjoint with the set of available output
         # resoultions
         if not operations:
-            warnings.warn("None of the selected output resolutions %s are "
-                          "computable from a file with %s temporal resolution"
-                          .format(' ,'.join(output_resolutions), time_resolution))
+            warnings.warn(
+                "None of the selected output resolutions %s are "
+                "computable from a file with %s temporal resolution".format(
+                    " ,".join(output_resolutions), time_resolution
+                )
+            )
             return []
 
         try:
             return [getattr(cdo, op)(input=data) for op in operations]
         except:
-            raise ValueError("Expected input file to have time resolution in {}, found '{}'"
-                             .format(climo_ops.keys(), time_resolution))
+            raise ValueError(
+                "Expected input file to have time resolution in {}, found '{}'".format(
+                    climo_ops.keys(), time_resolution
+                )
+            )
 
-    logger.info('Forming climatological {}s'.format(operation))
-    if var_type == 'point':
+    logger.info("Forming climatological {}s".format(operation))
+    if var_type == "point":
         # cdo can handle these variables in a single step
-        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, True, output_resolutions)
-    elif var_type in ['count', 'maximum', 'minimum']:
+        climo_files = climo_outputs(
+            input_file.time_resolution,
+            operation,
+            temporal_subset,
+            True,
+            output_resolutions,
+        )
+    elif var_type in ["count", "maximum", "minimum"]:
         # cdo's ymon* climatology-creating operations assume means for
         # constructing subyear aggregate datasets (like making a monthly
         # dataset from a daily dataset).
@@ -284,37 +317,55 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         aggregations = generate_aggregates(temporal_subset, input_file, var_type)
         climo_files = []
         for res in aggregations:
-            climo_files.extend(climo_outputs(res, operation, aggregations[res], False, output_resolutions))
+            climo_files.extend(
+                climo_outputs(
+                    res, operation, aggregations[res], False, output_resolutions
+                )
+            )
 
-    elif var_type == 'duration':
+    elif var_type == "duration":
         # Sub-year aggregation cannot be performed at all with these variables.
         # We can only generate climatologies at the resolution received.
-        climo_files = climo_outputs(input_file.time_resolution, operation, temporal_subset, False, output_resolutions)
+        climo_files = climo_outputs(
+            input_file.time_resolution,
+            operation,
+            temporal_subset,
+            False,
+            output_resolutions,
+        )
 
     # Optionally concatenate values for each interval (month, season, year) into one file
     if not split_intervals and climo_files:
-        logger.info('Concatenating {} interval files'.format(operation))
-        climo_files = [cdo.copy(input=' '.join(climo_files))]
+        logger.info("Concatenating {} interval files".format(operation))
+        climo_files = [cdo.copy(input=" ".join(climo_files))]
 
     # Optionally convert longitudes in each file
     if convert_longitudes and climo_files:
-        logger.info('Converting longitudes')
-        climo_files = [convert_longitude_range(climo_file) for climo_file in climo_files]
+        logger.info("Converting longitudes")
+        climo_files = [
+            convert_longitude_range(climo_file) for climo_file in climo_files
+        ]
 
     # Convert units on any pr variable in each file
-    climo_files = [convert_flux_var_units(input_file, climo_file) for climo_file in climo_files]
+    climo_files = [
+        convert_flux_var_units(input_file, climo_file) for climo_file in climo_files
+    ]
 
     # Update metadata in climo files
-    logger.debug('Updating climo metadata')
-    climo_files = [update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_file)
-                         for climo_file in climo_files]
+    logger.debug("Updating climo metadata")
+    climo_files = [
+        update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_file)
+        for climo_file in climo_files
+    ]
 
     # Record the ending time of generate_climos
-    logger.info('End of generate_climos')
+    logger.info("End of generate_climos")
     t_end_generate_climos = curr_time_cdo_format()
     # Update generate_climos history attribute
-    climo_files = [update_generate_climos_history(climo_file, t_end_generate_climos)
-                         for climo_file in climo_files]
+    climo_files = [
+        update_generate_climos_history(climo_file, t_end_generate_climos)
+        for climo_file in climo_files
+    ]
 
     # Split climo files by dependent variables if required
     if split_vars:
@@ -330,15 +381,18 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         with CFDataset(climo_file) as cf:
             output_file_path = os.path.join(outdir, cf.cmor_filename)
         try:
-            logger.info('Output file: {}'.format(output_file_path))
+            logger.info("Output file: {}".format(output_file_path))
             if not os.path.exists(os.path.dirname(output_file_path)):
                 os.makedirs(os.path.dirname(output_file_path))
             shutil.move(climo_file, output_file_path)
         except Exception as e:
-            logger.warning('Failed to create climatology file. {}: {}'.format(e.__class__.__name__, e))
+            logger.warning(
+                "Failed to create climatology file. {}: {}".format(
+                    e.__class__.__name__, e
+                )
+            )
         else:
             output_file_paths.append(output_file_path)
-
 
     # TODO: fix <variable_name>:cell_methods attribute to represent climatological aggregation
     # TODO: Does the above TODO make any sense? Each variable has had up to 3 different aggregations applied
@@ -347,7 +401,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     return output_file_paths
 
 
-def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annual'}):
+def generate_climo_time_var(t_start, t_end, types={"monthly", "seasonal", "annual"}):
     """Generate information needed to update the climatological time variable.
 
     :param t_start: (datetime.datetime) start date of period over which climatological means/standard deviations are formed
@@ -364,7 +418,7 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
     """
 
     # Year of all time values is middle year of period
-    year = (t_start + (t_end - t_start)/2).year + 1
+    year = (t_start + (t_end - t_start) / 2).year + 1
 
     # We follow the examples in sec 7.4 Climatological Statistics of the CF Metadata Standard
     # (http://cfconventions.org/cf-conventions/v1.6.0/cf-conventions.html#climatological-statistics),
@@ -375,18 +429,26 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
     climo_bounds = []
 
     # Monthly time values
-    if 'monthly' in types:
+    if "monthly" in types:
         for month in range(1, 13):
             times.append(datetime(year, month, 15))
-            climo_bounds.append([datetime(t_start.year, month, 1),
-                                 datetime(t_end.year, month, 1) + relativedelta(months=1)])
+            climo_bounds.append(
+                [
+                    datetime(t_start.year, month, 1),
+                    datetime(t_end.year, month, 1) + relativedelta(months=1),
+                ]
+            )
 
     # Seasonal time values
-    if 'seasonal' in types:
+    if "seasonal" in types:
         for month in [1, 4, 7, 10]:  # Center months of season
             times.append(datetime(year, month, 16))
-            climo_bounds.append([datetime(t_start.year, month, 1) + relativedelta(months=-1),
-                                 datetime(t_end.year, month, 1) + relativedelta(months=2)])
+            climo_bounds.append(
+                [
+                    datetime(t_start.year, month, 1) + relativedelta(months=-1),
+                    datetime(t_end.year, month, 1) + relativedelta(months=2),
+                ]
+            )
 
     # Annual time value
     # Standard climatological periods, provided by nchelpers and implicit here, begin Jan 1 and end Dec 31
@@ -394,12 +456,14 @@ def generate_climo_time_var(t_start, t_end, types={'monthly', 'seasonal', 'annua
     # confirm that for 30-year means/stanard deviations, the difference in annual and
     # season averages is negligible and therefore we do not have to allow for alternate begin and end dates.
     # """
-    if 'annual' in types:
+    if "annual" in types:
         times.append(datetime(year, 7, 2))
-        climo_bounds.append([datetime(t_start.year, 1, 1),
-                             datetime(t_end.year+1, 1, 1)])
+        climo_bounds.append(
+            [datetime(t_start.year, 1, 1), datetime(t_end.year + 1, 1, 1)]
+        )
 
     return times, climo_bounds
+
 
 def generate_aggregates(data, input_file, var_type):
     """Generates aggregated datasets with resolutions [monthly, seasonal, yearly]
@@ -443,9 +507,9 @@ def convert_longitude_range(climo_data):
 
     WARNING: This code modifies the file with filepath climo_data IN PLACE.
     """
-    with CFDataset(climo_data, mode='r+') as cf:
+    with CFDataset(climo_data, mode="r+") as cf:
         convert_these = [cf.lon_var]
-        if hasattr(cf.lon_var, 'bounds'):
+        if hasattr(cf.lon_var, "bounds"):
             lon_bnds_var = cf.variables[cf.lon_var.bounds]
             convert_these.append(lon_bnds_var)
         for lon_var in convert_these:
@@ -459,41 +523,53 @@ def convert_flux_var_units(input_file, climo_data):
     """If the file contains a 'pr' or 'prsn' variable, and if its units are per
        second, convert its units to per day.
     """
-    flux_vars = [var for var in ['pr', 'prsn'] if var in input_file.dependent_varnames()]
+    flux_vars = [
+        var for var in ["pr", "prsn"] if var in input_file.dependent_varnames()
+    ]
 
     for flux_var in flux_vars:
         attributes = {}  # will contain updates, if any, to flux variable attributes
         flux_variable = input_file.variables[flux_var]
         units = Unit.from_udunits_str(flux_variable.units)
 
-        if units in [Unit('kg / m**2 / s'), Unit('mm / s')]:
+        if units in [Unit("kg / m**2 / s"), Unit("mm / s")]:
             logger.info("Converting {} variable to units mm/day".format(flux_var))
             # Update units attribute
-            attributes['units'] = (units * Unit('s / day')).to_udunits_str()
+            attributes["units"] = (units * Unit("s / day")).to_udunits_str()
             # Multiply values by 86400 to convert from mm/s to mm/day
             seconds_per_day = 86400
 
-            if hasattr(flux_variable, 'scale_factor') or hasattr(flux_variable, 'add_offset'):
+            if hasattr(flux_variable, "scale_factor") or hasattr(
+                flux_variable, "add_offset"
+            ):
                 # This is a packed file; need only modify packing parameters
                 try:
-                    attributes['scale_factor'] = seconds_per_day * flux_variable.scale_factor
+                    attributes["scale_factor"] = (
+                        seconds_per_day * flux_variable.scale_factor
+                    )
                 except AttributeError:
-                    attributes['scale_factor'] = seconds_per_day * 1.0  # default value 1.0 for missing scale factor
+                    attributes["scale_factor"] = (
+                        seconds_per_day * 1.0
+                    )  # default value 1.0 for missing scale factor
                 try:
-                    attributes['add_offset'] = seconds_per_day * flux_variable.add_offset
+                    attributes["add_offset"] = (
+                        seconds_per_day * flux_variable.add_offset
+                    )
                 except AttributeError:
-                    attributes['add_offset'] = 0.0  # default value 0.0 for missing offset
+                    attributes[
+                        "add_offset"
+                    ] = 0.0  # default value 0.0 for missing offset
             else:
                 # This is not a packed file; modify the values proper
                 # Extract variable
-                var_only = cdo.select('name={}'.format(flux_var), input=climo_data)
+                var_only = cdo.select("name={}".format(flux_var), input=climo_data)
                 # Multiply values by 86400 to convert from mm/s to mm/day
                 var_only = cdo.mulc(str(seconds_per_day), input=var_only)
                 # Replace pr in all-variables file
                 climo_data = cdo.replace(input=[climo_data, var_only])
 
         # Update pr variable metadata as necessary to reflect changes madde
-        with CFDataset(climo_data, mode='r+') as cf:
+        with CFDataset(climo_data, mode="r+") as cf:
             for attr in attributes:
                 setattr(cf.variables[flux_var], attr, attributes[attr])
 
@@ -502,8 +578,10 @@ def convert_flux_var_units(input_file, climo_data):
 
 def split_on_variables(climo_file, var_names):
     if len(var_names) > 1:
-        return [cdo.select('name={}'.format(var_name), input=climo_file)
-                for var_name in var_names]
+        return [
+            cdo.select("name={}".format(var_name), input=climo_file)
+            for var_name in var_names
+        ]
     else:
         return [climo_file]
 
@@ -529,15 +607,15 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
     For information on climatological statistics, and specifically on datetimes to apply to such statistics,
     see Section 7.4 of http://cfconventions.org/Data/cf-conventions/cf-conventions-1.6/build/cf-conventions.html
     """
-    with CFDataset(climo_filepath, mode='r+') as cf:
+    with CFDataset(climo_filepath, mode="r+") as cf:
         # Add start and end time attributes
         # In Python2.7, datetime.datime.isoformat does not take params telling it how much precision to
         # provide in its output; standard requires 'seconds' precision, which means the first 19 characters.
-        cf.climo_start_time = t_start.isoformat()[:19] + 'Z'
-        cf.climo_end_time = t_end.isoformat()[:19] + 'Z'
+        cf.climo_start_time = t_start.isoformat()[:19] + "Z"
+        cf.climo_end_time = t_end.isoformat()[:19] + "Z"
 
         # Update tracking_id attribute
-        if hasattr(input_file, 'tracking_id'):
+        if hasattr(input_file, "tracking_id"):
             cf.climo_tracking_id = input_file.tracking_id
 
         # Deduce the set of averaging intervals from the number of times in the file.
@@ -547,47 +625,54 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         # This computation only works because each case results in a unique number of time values!
         try:
             num_times_to_interval_set = {
-                12: {'monthly'},
-                4: {'seasonal'},
-                1: {'annual'},
-                5: {'seasonal', 'annual'},
-                17: {'monthly', 'seasonal', 'annual'},
+                12: {"monthly"},
+                4: {"seasonal"},
+                1: {"annual"},
+                5: {"seasonal", "annual"},
+                17: {"monthly", "seasonal", "annual"},
             }
             interval_set = num_times_to_interval_set[cf.time_var.size]
         except KeyError:
-            raise ValueError('Expected climo file to contain # time values in {}, but found {}'
-                             .format(num_times_to_interval_set.keys(), cf.time_var.size))
-
+            raise ValueError(
+                "Expected climo file to contain # time values in {}, but found {}".format(
+                    num_times_to_interval_set.keys(), cf.time_var.size
+                )
+            )
 
         # Update cell_methods to reflect the operation being done to the data
         validate_operation(operation)
-        cell_method_op = {
-            'std': 'standard_deviation',
-            'mean': 'mean',
-        }[operation]
+        cell_method_op = {"std": "standard_deviation", "mean": "mean",}[operation]
 
         for key in cf.variables.keys():
             try:
-                cf.variables[key].cell_methods = cf.variables[key].cell_methods + ' time: {} over days'.format(cell_method_op)
+                cf.variables[key].cell_methods = cf.variables[
+                    key
+                ].cell_methods + " time: {} over days".format(cell_method_op)
             except AttributeError as e:
                 # skip over vars that do not have cell_methods i.e. lat, lon
                 continue
 
         # Update frequency attribute to reflect that this is a climo file.
-        suffix = {
-            'std': 'SD',
-            'mean': 'Mean',
-        }[operation]
+        suffix = {"std": "SD", "mean": "Mean",}[operation]
 
-        prefix = ''.join(abbr for interval, abbr in (('monthly', 'm'), ('seasonal', 's'), ('annual', 'a'), )
-                         if interval in interval_set)
-        cf.frequency = prefix + 'Clim' + suffix
+        prefix = "".join(
+            abbr
+            for interval, abbr in (
+                ("monthly", "m"),
+                ("seasonal", "s"),
+                ("annual", "a"),
+            )
+            if interval in interval_set
+        )
+        cf.frequency = prefix + "Clim" + suffix
 
         # Generate info for updating time variable and creating climo bounds variable
         times, climo_bounds = generate_climo_time_var(
-            dateutil.parser.parse(cf.climo_start_time[:19]),  # create tz naive dates by stripping off the tz indicator
+            dateutil.parser.parse(
+                cf.climo_start_time[:19]
+            ),  # create tz naive dates by stripping off the tz indicator
             dateutil.parser.parse(cf.climo_end_time[:19]),
-            interval_set
+            interval_set,
         )
 
         # Update time var with CF standard climatological times
@@ -597,15 +682,18 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         # Note: CDO seems to do some automagic with bounds variable names, converting the string 'bounds' to 'bnds'.
         # For less confusion, we use that convention here, even though original code used the name 'climatology_bounds'.
         # TODO: Should this variable be added to cf.time_var.bounds?
-        cf.time_var.climatology = 'climatology_bnds'
-        if 'bnds' not in cf.dimensions:
-            cf.createDimension('bnds', 2)
-        climo_bnds_var = cf.createVariable('climatology_bnds', 'f4', ('time', 'bnds', ))
+        cf.time_var.climatology = "climatology_bnds"
+        if "bnds" not in cf.dimensions:
+            cf.createDimension("bnds", 2)
+        climo_bnds_var = cf.createVariable("climatology_bnds", "f4", ("time", "bnds",))
         climo_bnds_var.calendar = cf.time_var.calendar
         climo_bnds_var.units = cf.time_var.units
-        climo_bnds_var[:] = date2num(climo_bounds, cf.time_var.units, cf.time_var.calendar)
+        climo_bnds_var[:] = date2num(
+            climo_bounds, cf.time_var.units, cf.time_var.calendar
+        )
 
     return climo_filepath
+
 
 def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
     """This function takes the start time and end time history-attribute-lines
@@ -649,7 +737,7 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
         arguments_list[0] = ": generate_climos"
         command = " ".join(sys.argv)
 
-        hist_line = (time_cdo_format + ": start" + command)
+        hist_line = time_cdo_format + ": start" + command
         hist_list = history.split("\n")
         hist_list.insert(position, hist_line)
 
@@ -657,8 +745,9 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
         hist_str = separ.join(hist_list)
 
         cf.history = hist_str
-    
+
     return netCDF_file
+
 
 def validate_operation(operation):
     """
@@ -666,9 +755,8 @@ def validate_operation(operation):
     operation it must be in the cdo table of statistical values.
     """
     supported_operations = {
-        'mean',
-        'std',
+        "mean",
+        "std",
     }
     if operation not in supported_operations:
-        raise Exception('Unsupported operation: can\'t yet process {}'
-                        .format(operation))
+        raise Exception("Unsupported operation: can't yet process {}".format(operation))
