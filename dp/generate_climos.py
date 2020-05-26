@@ -91,6 +91,16 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     output file name will be misleading.
 
     """
+    def curr_time_cdo_format():
+        """This function returns current time in the format of
+        cdo's history attribute.
+        """
+        return datetime.now().strftime("%a %B %d %H:%M:%S %Y")
+
+    # Record the starting time of generate_climos
+    logger.info("Start of generate_climos")
+    t_start_generate_climos = curr_time_cdo_format()
+
     logger.info('Generating climo period %s to %s', d2s(t_start), d2s(t_end))
 
     if input_file.is_multi_year:
@@ -189,15 +199,6 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
         'prsn': 'point'
     }
 
-    def curr_time_cdo_format():
-        """This function returns current time in the format of
-        cdo's history attribute.
-        """
-        return datetime.now().strftime("%a %B %d %H:%M:%S %Y")
-
-    # Record the starting time of generate_climos
-    t_start_generate_climos = curr_time_cdo_format()
-
     try:
         var_types = {variable_types[variable] for variable in input_file.dependent_varnames()}
     except KeyError as e:
@@ -211,6 +212,10 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     logger.info('Selecting temporal subset')
     date_range = '{},{}'.format(d2s(t_start), d2s(t_end))
     temporal_subset = cdo.seldate(date_range, input=input_file.filepath())
+
+    # Update generate_climos history attribute
+    temporal_subset = update_generate_climos_history(input_file.filepath(), outdir, operation, convert_longitudes, 
+                                    split_vars, split_intervals, output_resolutions, temporal_subset, t_start_generate_climos, 1)
 
     # Form climatological means/standard deviations over dependent variables
     def climo_outputs(time_resolution, operation, data, aggregate=True,
@@ -299,12 +304,17 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
     # Convert units on any pr variable in each file
     climo_files = [convert_flux_var_units(input_file, climo_file) for climo_file in climo_files]
 
-    # Record the ending time of generate_climos
-    t_end_generate_climos = curr_time_cdo_format()
-
     # Update metadata in climo files
     logger.debug('Updating climo metadata')
-    climo_files = [update_metadata_and_time_var(input_file, outdir, t_start, t_end, operation, climo_file, t_start_generate_climos, t_end_generate_climos)
+    climo_files = [update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_file)
+                         for climo_file in climo_files]
+
+    # Record the ending time of generate_climos
+    logger.info('End of generate_climos')
+    t_end_generate_climos = curr_time_cdo_format()
+    # Update generate_climos history attribute
+    climo_files = [update_generate_climos_history(input_file.filepath(), outdir, operation, convert_longitudes,
+                                                    split_vars, split_intervals, output_resolutions, climo_file, t_end_generate_climos)
                          for climo_file in climo_files]
 
     # Split climo files by dependent variables if required
@@ -329,6 +339,7 @@ def create_climo_files(outdir, input_file, operation, t_start, t_end,
             logger.warning('Failed to create climatology file. {}: {}'.format(e.__class__.__name__, e))
         else:
             output_file_paths.append(output_file_path)
+
 
     # TODO: fix <variable_name>:cell_methods attribute to represent climatological aggregation
     # TODO: Does the above TODO make any sense? Each variable has had up to 3 different aggregations applied
@@ -498,7 +509,7 @@ def split_on_variables(climo_file, var_names):
         return [climo_file]
 
 
-def update_metadata_and_time_var(input_file, outdir, t_start, t_end, operation, climo_filepath, t_start_generate_climos, t_end_generate_climos):
+def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_filepath):
     """Updates an existing netCDF file to reflect the fact that it contains climatological means or standard deviations.
 
     Specifically:
@@ -529,87 +540,6 @@ def update_metadata_and_time_var(input_file, outdir, t_start, t_end, operation, 
         # Update tracking_id attribute
         if hasattr(input_file, 'tracking_id'):
             cf.climo_tracking_id = input_file.tracking_id
-
-        def compare_times(t1, t2):
-            """This function takes two string inputs which are time representations
-            and returns boolean value. The purpose of this function is to find the
-            place where the start of generate_climos should be put in the history log.
-            It returns True if first input is later than the second input. Otherwise,
-            it returns False. If the second input is not in the format desired, the
-            function automatically returns True.
-            """
-            months = calendar.month_abbr[:]
-            t1 = re.split(":|  | ", t1)
-            t2 = re.split(":|  | ", t2)
-
-            t1 = datetime(
-                int(t1[6]),
-                months.index(t1[1]),
-                int(t1[2]),
-                int(t1[3]),
-                int(t1[4]),
-                int(t1[5]),
-            )
-            try:
-                t2 = datetime(
-                    int(t2[6]),
-                    months.index(t2[1]),
-                    int(t2[2]),
-                    int(t2[3]),
-                    int(t2[4]),
-                    int(t2[5]),
-                )
-            except:
-                return True
-
-            return t1 > t2
-
-        def update_history(history, start, end):
-            """This function takes the start time and end time history-attribute-lines
-            of generate_climos command. It returns a string of the entire history
-            attribute. The result indicates when the generate_climos started and ended.
-            For example:
-            :history = "Thu May 21 11:12:05: end: generate_climos ..." <--- end of genereate_climos
-            "Thu May 21 11:12:05 2020: cdo -O -replace ..."
-                "Thu May 21 11:12:04 2020: cdo -O -timmean ..." 
-                "Thu May 21 11:12:04 2020: cdo -O -seldate ..."
-                "Thu May 21 11:12:04: start: generate_climos ..." <--- start of genereate_climos
-                "Thu Mar 21 14:49:01 2019: cdo sellonlatbox ..."
-                "Thu Sep  1 14:34:03 2016: ncrcat ..."
-                "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."
-                
-                ...
-            """
-            history_li = history.split("\n")
-            for idx, h in enumerate(history_li):
-                if compare_times(t_start_generate_climos, h[:24]):
-                    break
-                if idx == len(history_li)-1:
-                    idx += 1
-            history_li.insert(idx, start)
-
-            history_str = ""
-            for h in history_li:
-                history_str += h + "\n"
-
-            history_str = end + "\n" + history_str
-
-            return history_str
-
-
-        # Update history attribute
-        if hasattr(input_file, "history"):
-            command = ": generate_climos -o" + outdir + " " + input_file.filepath() + " -p " + operation
-
-            start = (
-                t_start_generate_climos + ": start " + command
-            )
-            end = (
-                t_end_generate_climos + ": end " + command
-            )
-
-            cf.history = update_history(cf.history, start, end)
-
 
         # Deduce the set of averaging intervals from the number of times in the file.
         # WARNING: This is fragile, and depends on the assumption that a climo output file contains only the following
@@ -678,6 +608,79 @@ def update_metadata_and_time_var(input_file, outdir, t_start, t_end, operation, 
 
     return climo_filepath
 
+def update_generate_climos_history(input_filepath, outdir, operation, convert_longitudes, 
+                                    split_vars, split_intervals, output_resolutions, netCDF_file, time_cdo_format, position=0):
+    """This function takes the start time and end time history-attribute-lines
+    of generate_climos command. It returns a string of the entire history
+    attribute. The result indicates when the generate_climos started and ended.
+
+    :param netCDF_file: (CFDataset) netCDF file to be updated
+    :param time_cdo_format: (str) the point of time that generate_climos history(start or end) was updated
+    :param position: (int) the position that the new history attribute line will be inserted
+    
+    ----------the following command line arguments will be included in the updated history attribute----------
+    :param input_filepath(str), outdir(str), operation(str), convert_longitudes(boolean), split_vars(boolean),
+            split_intervals(boolean), output_resolutions(set)
+    ----------------------------------------------------------------------------------------------------------
+
+    For example:
+
+    :history = 
+        "Thu May 21 11:12:04 2020: cdo -O -seldate ..."    <--- position 0
+        "Thu May 21 11:12:04: start: generate_climos ..."  <--- position 1: start of genereate_climos
+        "Thu Mar 21 14:49:01 2019: cdo sellonlatbox ..."   <--- position 2
+        "Thu Sep  1 14:34:03 2016: ncrcat ..."             <--- position 3
+        "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."     <--- position 4
+        
+        ...
+
+    or
+
+    :history = 
+        "Thu May 21 11:12:05: end: generate_climos ..."    <--- position 0: end of genereate_climos
+        "Thu May 21 11:12:05 2020: cdo -O -replace ..."    <--- position 1 
+        "Thu May 21 11:12:04 2020: cdo -O -timmean ..."    <--- position 2
+        "Thu May 21 11:12:04 2020: cdo -O -seldate ..."    <--- position 3
+        "Thu May 21 11:12:04: start: generate_climos ..."  <--- position 4
+        "Thu Mar 21 14:49:01 2019: cdo sellonlatbox ..."   <--- position 5
+        "Thu Sep  1 14:34:03 2016: ncrcat ..."             <--- position 6
+        "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."     <--- position 7
+
+        ...
+    
+    """
+    with CFDataset(netCDF_file, "r+") as cf:
+        history = cf.history
+        command = (": generate_climos" + " -p " + operation + " -o " + outdir + " " + input_filepath)
+
+        if not convert_longitudes:
+            command += " -g " + str(convert_longitudes)
+
+        if not split_vars:
+            command += " -v " + str(split_vars)
+
+        if not split_intervals:
+            command += + " -i " + str(split_intervals)
+
+        if output_resolutions != set(["yearly", "seasonal", "monthly"]):
+            command += " -r " + str(output_resolutions).split("\'")[1]
+
+        if position:
+            hist_line = (time_cdo_format + ": start" + command)
+            hist_list = history.split("\n")
+            hist_list.insert(position, hist_line)
+
+            hist_str = ""
+            for h in hist_list:
+                hist_str += h + "\n"
+        
+        else:
+            hist_line = (time_cdo_format + ": end" + command)
+            hist_str = hist_line  + "\n" + history
+
+        cf.history = hist_str
+    
+    return netCDF_file
 
 def validate_operation(operation):
     """
