@@ -40,7 +40,7 @@ def main(args):
         else:
             for period in input_file.climo_periods.keys() & args.climo:
                 t_range = input_file.climo_periods[period]
-                create_climo_files(args.outdir, filepath, input_file, args.operation, *t_range,
+                create_climo_files(args.outdir, input_file, args.operation, *t_range,
                                    convert_longitudes=args.convert_longitudes, split_vars=args.split_vars,
                                    output_resolutions=args.resolutions)
 
