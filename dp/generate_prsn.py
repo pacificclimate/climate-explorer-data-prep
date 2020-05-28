@@ -19,23 +19,47 @@ Q_ = ureg.Quantity
 logger = logging.getLogger(__name__)
 
 
-def dry_run(filepaths):
+def dry_run(filepaths, output_to_file=False, workdir=None):
     '''Perform metadata checks on the input files'''
-    logger.info('Dry Run')
-    for filepath in filepaths.values():
-        logger.info('')
-        logger.info('File: {}'.format(filepath))
-        try:
-            dataset = CFDataset(filepath)
-        except Exception as e:
-            logger.exception('{}: {}'.format(e.__class__.__name__, e))
-
-        for attr in 'project model institute experiment ensemble_member'.split():
+    if output_to_file: # Used for wps process in thunderbird
+        output = ['Dry Run']
+        for filepath in filepaths.values():
+            output.append('File: {}'.format(filepath))
             try:
-                logger.info('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+                dataset = CFDataset(filepath)
             except Exception as e:
-                logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-        logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+                output.append(f'{e.__class__.__name__}: {e}')
+
+            for attr in 'project model institute experiment ensemble_member'.split():
+                try:
+                    output.append('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+                except Exception as e:
+                    output.append('{}: {}: {}'.format(attr, e.__class__.__name__, e))
+            output.append('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+
+        filename = os.path.join(workdir, "dry.txt")
+        with open(filename, "w") as f:
+            for line in output:
+                f.write(f"{line}\n")
+
+        return filename
+
+    else:
+        logger.info('Dry Run')
+        for filepath in filepaths.values():
+            logger.info('')
+            logger.info('File: {}'.format(filepath))
+            try:
+                dataset = CFDataset(filepath)
+            except Exception as e:
+                logger.exception('{}: {}'.format(e.__class__.__name__, e))
+
+            for attr in 'project model institute experiment ensemble_member'.split():
+                try:
+                    logger.info('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+                except Exception as e:
+                    logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
+            logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
 
 
 def unique_shape(arrays):
