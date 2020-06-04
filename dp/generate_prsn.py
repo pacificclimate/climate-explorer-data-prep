@@ -28,7 +28,7 @@ def dry_run(filepaths, output_to_file=False, workdir=None):
             try:
                 dataset = CFDataset(filepath)
             except Exception as e:
-                output.append(f'{e.__class__.__name__}: {e}')
+                output.append('{}: {}'.format(e.__class__.__name__, e))
 
             for attr in 'project model institute experiment ensemble_member'.split():
                 try:
@@ -37,10 +37,10 @@ def dry_run(filepaths, output_to_file=False, workdir=None):
                     output.append('{}: {}: {}'.format(attr, e.__class__.__name__, e))
             output.append('dependent_varnames: {}'.format(dataset.dependent_varnames()))
 
-        filename = os.path.join(workdir, "dry.txt")
-        with open(filename, "w") as f:
+        filename = os.path.join(workdir, 'dry.txt')
+        with open(filename, 'w') as f:
             for line in output:
-                f.write(f"{line}\n")
+                f.write('{}\n'.format(line))
 
         return filename
 
