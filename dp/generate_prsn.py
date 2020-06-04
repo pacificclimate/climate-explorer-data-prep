@@ -19,9 +19,14 @@ Q_ = ureg.Quantity
 logger = logging.getLogger(__name__)
 
 
-def dry_run(filepaths, output_to_file=False, workdir=None):
-    '''Perform metadata checks on the input files'''
-    if output_to_file: # Used for wps process in thunderbird
+def dry_run(filepaths, outpath=None):
+    '''Perform metadata checks on the input files
+
+       Parameters:
+            filepaths (dict): Dictionary containing the three filepaths
+            outpath (str): Optional path to text file that will contain metadata info
+    '''
+    if outpath: # Used for wps process in thunderbird
         output_items = []
         outputer = output_items.append
     else:
@@ -42,13 +47,10 @@ def dry_run(filepaths, output_to_file=False, workdir=None):
                 outputer('{}: {}: {}'.format(attr, e.__class__.__name__, e))
         outputer('dependent_varnames: {}'.format(dataset.dependent_varnames()))
 
-    if output_to_file:
-        filename = os.path.join(workdir, 'dry.txt')
-        with open(filename, 'w') as f:
+    if outpath:
+        with open(outpath, 'w') as f:
             for line in output_items:
                 f.write('{}\n'.format(line))
-
-        return filename
 
 def unique_shape(arrays):
     '''Ensure each array in dict is the same shape'''
