@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 0.8.1
+*2020 Jun 05*
+
+ * Updates nchelpers version from 5.5.1 to 5.5.6
+ * Adds ability to generate prsn for dry run to output to text file instead of logger
+ 
 ## 0.8.0
 *2020 Feb 27*
 
