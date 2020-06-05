@@ -1,6 +1,7 @@
 #!python
 from argparse import ArgumentParser
 import logging
+import os
 
 from dp.generate_prsn import generate_prsn_file, dry_run
 from nchelpers import CFDataset
@@ -23,7 +24,8 @@ def main(args):
         'tasmax': args.tasmax
     }
     if args.dry_run:
-        dry_run(filepaths)
+        outpath = os.path.join(args.outdir, args.dry_output_file) if args.dry_output_file else None
+        dry_run(filepaths, outpath)
     else:
         generate_prsn_file(filepaths, args.chunk_size, args.outdir, args.output_file)
 
@@ -31,6 +33,8 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='Create precipitation as snow data from pr, tasmin, tasmax')
     parser.add_argument('-d', '--dry-run', dest='dry_run', action='store_true')
+    parser.add_argument('-r', '--dry-output-file', dest='dry_output_file', default=None,
+                        help='Optional name of text file to contain dry run info')
     parser.add_argument('-c', '--chunk-size', dest='chunk_size', type=int, default=100,
                         help='Number of time slices to be read/written at a time')
     parser.add_argument('-p', '--prec', required=True, help='Precipitation file to process')
