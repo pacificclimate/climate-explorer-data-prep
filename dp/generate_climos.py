@@ -107,7 +107,7 @@ def create_climo_files(
         """This function returns current time in the format of
         cdo's history attribute.
         """
-        return datetime.now().strftime("%a %B %d %H:%M:%S %Y")
+        return datetime.now().strftime("%a %b %d %H:%M:%S %Y")
 
     # Record the starting time of generate_climos
     logger.info("Start of generate_climos")
@@ -358,6 +358,14 @@ def create_climo_files(
         for climo_file in climo_files
     ]
 
+    # Split climo files by dependent variables if required
+    if split_vars:
+        climo_files = [
+            fp
+            for climo_file in climo_files
+            for fp in split_on_variables(climo_file, input_file.dependent_varnames())
+        ]
+
     # Record the ending time of generate_climos
     logger.info("End of generate_climos")
     t_end_generate_climos = curr_time_cdo_format()
@@ -366,14 +374,6 @@ def create_climo_files(
         update_generate_climos_history(climo_file, t_end_generate_climos)
         for climo_file in climo_files
     ]
-
-    # Split climo files by dependent variables if required
-    if split_vars:
-        climo_files = [
-            fp
-            for climo_file in climo_files
-            for fp in split_on_variables(climo_file, input_file.dependent_varnames())
-        ]
 
     # Move/copy the temporary files to their final output filepaths
     output_file_paths = []
@@ -736,8 +736,13 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
         arguments_list = sys.argv
         arguments_list[0] = ": generate_climos"
         command = " ".join(sys.argv)
-
-        hist_line = time_cdo_format + ": start" + command
+        
+        # update_generate_climos_history for the start has to be called after the first or latter cdo command
+        # update_generate_climos_history for the end has to be called after the last cdo command
+        if position != 0:
+            hist_line = time_cdo_format + ": start" + command
+        else:
+            hist_line = time_cdo_format + ": end" + command
         hist_list = history.split("\n")
         hist_list.insert(position, hist_line)
 

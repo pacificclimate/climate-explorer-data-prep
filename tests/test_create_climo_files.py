@@ -155,6 +155,10 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
                                      split_vars=split_vars, split_intervals=split_intervals)
     frequencies = set()
 
+    def history_items(hist_str):
+        '''returns components of hist_str separated by ": "'''
+        return hist_str.split(": ")
+
     for fp in climo_files:
         with CFDataset(fp) as cf:
             frequencies.add(cf.frequency)
@@ -164,6 +168,21 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
             assert cf.climo_start_time == t_start.isoformat()[:19] + 'Z'
             assert cf.climo_end_time == t_end.isoformat()[:19] + 'Z'
             assert getattr(cf, 'climo_tracking_id', None) == getattr(tiny_dataset, 'tracking_id', None)
+
+            # Tests for history metadata updates
+            assert cf.history
+            hist_lines = cf.history.split("\n")
+            end_items = history_items(hist_lines[0])
+            assert end_items[-1].split(" ")[0] == "generate_climos" and end_items[-2] == "end"
+            found_start = False
+            for idx, h in enumerate(hist_lines):
+                h_items = history_items(h)
+                if h_items[-2] == "start" and h_items[-1].split(" ")[0] == "generate_climos":
+                    found_start = True
+                    break
+            assert found_start
+            original_hist = hist_lines[idx+1:]
+            assert "\n".join(original_hist) == tiny_dataset.history
 
     suffix = {
         'std': 'SD',
