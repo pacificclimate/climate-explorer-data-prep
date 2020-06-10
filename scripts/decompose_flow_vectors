@@ -12,7 +12,7 @@ import time
 import sys
 import types
 
-def main(args):
+def main(args, parser):
     #check that source file is usable:
     source = Dataset(args.source_file, "r", format="NETCDF4")
 
@@ -108,4 +108,4 @@ if __name__ == '__main__':
     parser.add_argument('variable', metavar='variable', help='netCDF variable describing flow direction')
 
     args = parser.parse_args()
-    main(args)
+    main(args, parser)
