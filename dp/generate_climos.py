@@ -703,7 +703,16 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
     :param netCDF_file: (CFDataset) netCDF file to be updated
     :param time_cdo_format: (str) the point of time that generate_climos_history(start or end) to be updated
     :param position: (int) the position that the new history attribute line will be inserted
-    
+
+    The "position" parameter also implies the start/end flag of the history line
+    to be inserted. At the current stage, this function only updates the output
+    netCDF file(s) that has been created. Therefore, this function will only be
+    called after the first or latter cdo command to insert the "start" flagged
+    history line, which makes the position parameter greater than or equal to 1.
+    Otherwise, this function will only be called after the last cdo command to
+    append the "end" flagged history line, which makes the position parameter
+    equal to 0.
+
     For example:
 
     :history = 
@@ -728,7 +737,7 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
         "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."     <--- position 7
 
         ...
-    
+
     """
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
