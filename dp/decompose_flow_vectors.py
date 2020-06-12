@@ -1,10 +1,6 @@
 #!python
-import argparse
-from netCDF4 import Dataset
 import numpy as np
 import time
-import sys
-import types
 
 def decompose_flow_vectors(source, dest, variable, input_filepath, output_filepath):
 

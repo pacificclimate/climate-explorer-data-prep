@@ -8,9 +8,7 @@
 import argparse
 from netCDF4 import Dataset
 import numpy as np
-import time
 import sys
-import types
 from dp.decompose_flow_vectors import decompose_flow_vectors
 
 def main(args):
