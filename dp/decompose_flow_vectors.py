@@ -15,7 +15,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
 
 
-def decompose_flow_vectors(source, dest, variable, input_filepath, output_filepath):
+def decompose_flow_vectors(source, dest, variable):
 
     dest.createDimension("lat", source.dimensions["lat"].size)
     dest.createVariable("lat", "f8", ("lat"))
@@ -71,7 +71,7 @@ def decompose_flow_vectors(source, dest, variable, input_filepath, output_filepa
 
     #update history attribute, if present, to include this script
     if "history" in dest.ncattrs():
-        dest.history ="{} {} {} {} {}\n".format(time.ctime(time.time()), "decompose_flow_vectors", input_filepath, output_filepath, variable) + dest.history
+        dest.history ="{} {} {} {} {}\n".format(time.ctime(time.time()), "decompose_flow_vectors", source.filepath(), dest.filepath(), variable) + dest.history
 
     source.close()
     dest.close()

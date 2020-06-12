@@ -41,7 +41,7 @@ def main(args):
    #create destination file, same grid as original file
    dest = Dataset(args.dest_file, "w", format="NETCDF4")   
 
-   decompose_flow_vectors(source, dest, args.variable, args.source_file, args.dest_file)
+   decompose_flow_vectors(source, dest, args.variable)
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description='Process an indexed flow direction netCDF into a vectored netCDF suitable for ncWMS display')
