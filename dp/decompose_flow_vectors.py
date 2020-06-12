@@ -1,6 +1,19 @@
 #!python
 import numpy as np
 import time
+import logging
+
+# Set up logging
+formatter = logging.Formatter(
+    "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+)
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
+
 
 def decompose_flow_vectors(source, dest, variable, input_filepath, output_filepath):
 
@@ -39,14 +52,14 @@ def decompose_flow_vectors(source, dest, variable, input_filepath, output_filepa
                 [.7071, -.7071], #8 = NW
                 [0, 0]] #9 = outlet
 
-    print("Generating eastward component")
+    logger.info("Generating eastward component")
     east = np.ma.copy(source.variables[variable][:])
     for (x, y), dir in np.ndenumerate(east):
         if dir >= 0 and dir <= 9:
             east[x][y] = directions[int(dir)][1]
     dest.variables[eastvec][:] = east
 
-    print("Generating northward component")
+    logger.info("Generating northward component")
     north = np.ma.copy(source.variables[variable][:])
     for (x, y), dir in np.ndenumerate(north):
         if dir >= 0 and dir <= 9:
