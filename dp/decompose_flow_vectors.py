@@ -1,4 +1,5 @@
 #!python
+from netCDF4 import Dataset
 import numpy as np
 import time
 import logging
@@ -15,30 +16,30 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
 
 
-def decompose_flow_vectors(source, dest, variable):
+def decompose_flow_vectors(source, dest_file, variable):
+    #create destination file, same grid as original file
+    dest = Dataset(dest_file, "w", format="NETCDF4")  
 
-    dest.createDimension("lat", source.dimensions["lat"].size)
-    dest.createVariable("lat", "f8", ("lat"))
-    dest.variables["lat"].setncatts(source.variables["lat"].__dict__)
-    dest.variables["lat"][:] = source.variables["lat"][:]
+    def create_graticule_variables(axis):
+        dest.createDimension(axis, source.dimensions[axis].size)
+        dest.createVariable(axis, "f8", (axis))
+        dest.variables[axis].setncatts(source.variables[axis].__dict__)
+        dest.variables[axis][:] = source.variables[axis][:]
 
-    dest.createDimension("lon", source.dimensions["lon"].size)
-    dest.createVariable("lon", "f8", ("lon"))
-    dest.variables["lon"].setncatts(source.variables["lon"].__dict__)
-    dest.variables["lon"][:] = source.variables["lon"][:]
+    create_graticule_variables("lat")
+    create_graticule_variables("lon")
 
-    #create the vector variables
-    eastvec = "eastward_{}".format(variable)
-    dest.createVariable(eastvec, "f8", ("lat", "lon"))
-    dest.variables[eastvec].units = "1"
-    dest.variables[eastvec].standard_name = eastvec #ncWMS relies on standard names
-    dest.variables[eastvec].long_name = "Normalized eastward vector component of {}".format(variable)
+    def create_vector_variables(direction):
+        dir_vec = "{}ward_{}".format(direction, variable)
+        dest.createVariable(dir_vec, "f8", ("lat", "lon"))
+        dest.variables[dir_vec].units = "1"
+        dest.variables[dir_vec].standard_name = dir_vec #ncWMS relies on standard names
+        dest.variables[dir_vec].long_name = "Normalized {}ward vector component of {}".format(direction, variable)
 
-    northvec = "northward_{}".format(variable)
-    dest.createVariable(northvec, "f8", ("lat", "lon"))
-    dest.variables[northvec].units = "1"
-    dest.variables[northvec].standard_name = northvec #ncWMS relies on standard names
-    dest.variables[northvec].long_name = "Normalized northward vector component of {}".format(variable)
+        return dir_vec
+
+    eastvec = create_vector_variables("east") 
+    northvec = create_vector_variables("north")
 
     #populate variables with decomposed vectors.
     directions = [[0,0], #0 = filler
@@ -52,26 +53,26 @@ def decompose_flow_vectors(source, dest, variable):
                 [.7071, -.7071], #8 = NW
                 [0, 0]] #9 = outlet
 
-    logger.info("Generating eastward component")
-    east = np.ma.copy(source.variables[variable][:])
-    for (x, y), dir in np.ndenumerate(east):
-        if dir >= 0 and dir <= 9:
-            east[x][y] = directions[int(dir)][1]
-    dest.variables[eastvec][:] = east
+    dir_axis ={"eastward": 1, "northward": 0}
 
-    logger.info("Generating northward component")
-    north = np.ma.copy(source.variables[variable][:])
-    for (x, y), dir in np.ndenumerate(north):
-        if dir >= 0 and dir <= 9:
-            north[x][y] = directions[int(dir)][0]
-    dest.variables[northvec][:] = north
+    def generate_vector_component(dir_vec, direction):
+        logger.info("Generating {} component".format(direction))
+        axis_idx = dir_axis[direction]
+        vector_components = np.ma.copy(source.variables[variable][:])
+        for (x, y), dir in np.ndenumerate(vector_components):
+            if dir >= 0 and dir <= 9:
+                vector_components[x][y] = directions[int(dir)][axis_idx]
+        dest.variables[dir_vec][:] = vector_components
+
+    generate_vector_component(eastvec, "eastward")
+    generate_vector_component(northvec, "northward")
 
     #copy global attributes to the new file.        
     dest.setncatts(source.__dict__)
 
     #update history attribute, if present, to include this script
     if "history" in dest.ncattrs():
-        dest.history ="{} {} {} {} {}\n".format(time.ctime(time.time()), "decompose_flow_vectors", source.filepath(), dest.filepath(), variable) + dest.history
+        dest.history ="{} {} {} {} {}\n".format(time.ctime(time.time()), "decompose_flow_vectors", source.filepath(), dest_file, variable) + dest.history
 
     source.close()
     dest.close()

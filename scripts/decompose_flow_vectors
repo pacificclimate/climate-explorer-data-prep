@@ -36,12 +36,9 @@ def main(args):
    if np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1:
       logger.debug("Variable {} is not a valid flow routing".format(args.variable))
       source.close()
-      sys.exit()
+      sys.exit() 
 
-   #create destination file, same grid as original file
-   dest = Dataset(args.dest_file, "w", format="NETCDF4")   
-
-   decompose_flow_vectors(source, dest, args.variable)
+   decompose_flow_vectors(source, args.dest_file, args.variable)
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser(description='Process an indexed flow direction netCDF into a vectored netCDF suitable for ncWMS display')
