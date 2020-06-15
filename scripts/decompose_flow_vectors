@@ -1,9 +1,9 @@
 #!python
-'''This script takes a VIC-formatted parametrization file, including drainage flow
+"""This script takes a VIC-formatted parametrization file, including drainage flow
    direction information and outputs a file with the selected flow vectors decomposed 
    into normalized eastward and northward components formatted for ncWMS vector display. 
    The output netCDF will contain lat lon axes and two vector grid variables for
-   ncWMS'''
+   ncWMS"""
 
 import argparse
 from netCDF4 import Dataset
@@ -11,40 +11,51 @@ import numpy as np
 import sys
 from dp.decompose_flow_vectors import logger, decompose_flow_vectors
 
+
 def main(args):
-   #check that source file is usable:
-   source = Dataset(args.source_file, "r", format="NETCDF4")
+    # check that source file is usable:
+    source = Dataset(args.source_file, "r", format="NETCDF4")
 
-   if not "lon" in source.dimensions or not "lat" in source.dimensions:
-      logger.debug("{} does not have latitude and longitude dimensions".format(args.source_file))
-      source.close()
-      sys.exit()
+    if not "lon" in source.dimensions or not "lat" in source.dimensions:
+        logger.debug(
+            "{} does not have latitude and longitude dimensions".format(
+                args.source_file
+            )
+        )
+        source.close()
+        sys.exit()
 
-   if not args.variable in source.variables:
-      logger.debug("Variable {} is not found in {}".format(args.variable, args.source_file))
-      source.close()
-      sys.exit()
+    if not args.variable in source.variables:
+        logger.debug(
+            "Variable {} is not found in {}".format(args.variable, args.source_file)
+        )
+        source.close()
+        sys.exit()
+
+    flow_variable = source.variables[args.variable]
+
+    if not "lon" in flow_variable.dimensions or not "lat" in flow_variable.dimensions:
+        logger.debug("Variable {} is not associated with a grid".format(args.variable))
+        source.close()
+        sys.exit()
+
+    if np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1:
+        logger.debug("Variable {} is not a valid flow routing".format(args.variable))
+        source.close()
+        sys.exit()
+
+    decompose_flow_vectors(source, args.dest_file, args.variable)
 
 
-   flow_variable = source.variables[args.variable]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Process an indexed flow direction netCDF into a vectored netCDF suitable for ncWMS display"
+    )
+    parser.add_argument("source_file", metavar="infile", help="source netCDF file")
+    parser.add_argument("dest_file", metavar="outfile", help="destination netCDF file")
+    parser.add_argument(
+        "variable", metavar="variable", help="netCDF variable describing flow direction"
+    )
 
-   if not "lon" in flow_variable.dimensions or not "lat" in flow_variable.dimensions:
-      logger.debug("Variable {} is not associated with a grid".format(args.variable))
-      source.close()
-      sys.exit()
-      
-   if np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1:
-      logger.debug("Variable {} is not a valid flow routing".format(args.variable))
-      source.close()
-      sys.exit() 
-
-   decompose_flow_vectors(source, args.dest_file, args.variable)
-
-if __name__ == '__main__':
-   parser = argparse.ArgumentParser(description='Process an indexed flow direction netCDF into a vectored netCDF suitable for ncWMS display')
-   parser.add_argument('source_file', metavar='infile', help='source netCDF file')
-   parser.add_argument('dest_file', metavar='outfile', help='destination netCDF file')
-   parser.add_argument('variable', metavar='variable', help='netCDF variable describing flow direction')
-
-   args = parser.parse_args()
-   main(args)
+    args = parser.parse_args()
+    main(args)
