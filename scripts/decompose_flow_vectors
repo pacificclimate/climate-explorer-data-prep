@@ -6,10 +6,13 @@
    ncWMS"""
 
 import argparse
+import logging
+
 from netCDF4 import Dataset
 import numpy as np
 import sys
 from dp.decompose_flow_vectors import logger, decompose_flow_vectors
+from dp.argparse_helpers import log_level_choices
 
 
 def main(args):
@@ -56,6 +59,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "variable", metavar="variable", help="netCDF variable describing flow direction"
     )
+    parser.add_argument('-l', '--loglevel', help='Logging level',
+                        choices=log_level_choices, default='INFO')
 
     args = parser.parse_args()
+    logger.setLevel(getattr(logging, args.loglevel))
     main(args)
