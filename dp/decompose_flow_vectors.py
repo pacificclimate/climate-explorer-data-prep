@@ -17,19 +17,36 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 
 
 def decompose_flow_vectors(source, dest_file, variable):
-    #create destination file, same grid as original file
-    dest = Dataset(dest_file, "w", format="NETCDF4")  
+    '''
+    Process an indexed flow direction netCDF into a vectored netCDF suitable for
+    ncWMS display.
 
-    def create_graticule_variables(axis):
+    :param source: (netCDF4 Dataset) source netCDF Dataset
+    :param dest_file: (str) path to destination netCDF file
+    :param position: (str) netCDF variable describing flow direction
+    '''
+
+    def create_graticule_variables(axis, dest):
+        '''
+        this function adds a netCDF graticule component variable(latitude/longitude)
+        inside the destination file.
+        
+        :param axis: (str) a griticule component to be created
+        :param dest: (str) path to destination netCDF file
+        '''
         dest.createDimension(axis, source.dimensions[axis].size)
         dest.createVariable(axis, "f8", (axis))
         dest.variables[axis].setncatts(source.variables[axis].__dict__)
         dest.variables[axis][:] = source.variables[axis][:]
 
-    create_graticule_variables("lat")
-    create_graticule_variables("lon")
-
-    def create_vector_variables(direction):
+    def create_vector_variables(direction, dest):
+        '''
+        this function adds a netCDF direction vector component variable(eastward/nothward)
+        inside the destination file.
+        
+        :param direction: (str) a direction vector component to be created
+        :param dest: (str) path to destination netCDF file
+        '''
         dir_vec = "{}ward_{}".format(direction, variable)
         dest.createVariable(dir_vec, "f8", ("lat", "lon"))
         dest.variables[dir_vec].units = "1"
@@ -38,34 +55,56 @@ def decompose_flow_vectors(source, dest_file, variable):
 
         return dir_vec
 
-    eastvec = create_vector_variables("east") 
-    northvec = create_vector_variables("north")
+    #create destination file, same grid as original file
+    dest = Dataset(dest_file, "w", format="NETCDF4") 
+ 
+    create_graticule_variables("lat", dest)
+    create_graticule_variables("lon", dest)
 
-    #populate variables with decomposed vectors.
-    directions = [[0,0], #0 = filler
-                [1, 0], # 1 = N
-                [.7071, .7071], #2 = NE
-                [0, 1], #3 = E
-                [-.7071, .7071], #4 = SE
-                [-1, 0], #5 = S
-                [-.7071, -.7071], #6 = SW
-                [0, -1], #7 = W
-                [.7071, -.7071], #8 = NW
-                [0, 0]] #9 = outlet
+    eastvec = create_vector_variables("east", dest) 
+    northvec = create_vector_variables("north", dest)
 
-    dir_axis ={"eastward": 1, "northward": 0}
+    def generate_vector_component(dir_vec, two_grid_vectors, two_grids, grid_dir, dest):
+        '''
+        This function converts source file's VIC model vector values to
+        destination file's Two-Grid vector values. Basically, it splits 
+        off a direction into x-y(eastward-northward) coordinates.
 
-    def generate_vector_component(dir_vec, direction):
-        logger.info("Generating {} component".format(direction))
-        axis_idx = dir_axis[direction]
-        vector_components = np.ma.copy(source.variables[variable][:])
-        for (x, y), dir in np.ndenumerate(vector_components):
+        :param dir_vec: (str) a direction vector component variable to be generated
+        :param two_grid_vectors: (list) a list of Two-Grid vectors corresponding to VIC model vector values
+        :param two_grids: (dictionary) keys are grid directions and values are correspoding indices
+        :param grid_dir: (str) a grid direction that decides which vector component to be generated
+        :param dest: (str) path to destination netCDF file
+        '''
+        logger.info("Generating {} component".format(grid_dir))
+        grid_idx = two_grids[grid_dir]
+
+        # vectors_field is consist of VIC Routing Directional Vector Values
+        vectors_field = np.ma.copy(source.variables[variable][:])
+        # for loop changes the VIC Vectors into Two-Grid Vectors
+        for (x, y), dir in np.ndenumerate(vectors_field):
             if dir >= 0 and dir <= 9:
-                vector_components[x][y] = directions[int(dir)][axis_idx]
-        dest.variables[dir_vec][:] = vector_components
+                vectors_field[x][y] = two_grid_vectors[int(dir)][grid_idx]
 
-    generate_vector_component(eastvec, "eastward")
-    generate_vector_component(northvec, "northward")
+        dest.variables[dir_vec][:] = vectors_field
+
+    # populate variables with decomposed vectors.
+    # indices indicate VIC model vector values
+    two_grid_vectors = [[0,0], #0 = filler
+                        [1, 0], # 1 = N
+                        [.7071, .7071], #2 = NE
+                        [0, 1], #3 = E
+                        [-.7071, .7071], #4 = SE
+                        [-1, 0], #5 = S
+                        [-.7071, -.7071], #6 = SW
+                        [0, -1], #7 = W
+                        [.7071, -.7071], #8 = NW
+                        [0, 0]] #9 = outlet
+
+    two_grids ={"eastward": 1, "northward": 0}
+
+    generate_vector_component(eastvec, two_grid_vectors, two_grids, "eastward", dest)
+    generate_vector_component(northvec, two_grid_vectors, two_grids, "northward", dest)
 
     #copy global attributes to the new file.        
     dest.setncatts(source.__dict__)
