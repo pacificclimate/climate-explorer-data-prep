@@ -31,7 +31,7 @@ setup(
         scripts/generate_prsn
         scripts/split_merged_climos
         scripts/update_metadata
-		scripts/decompose_flow_vectors
+        scripts/decompose_flow_vectors
     '''.split(),
     classifiers=[
         'Development Status :: 4 - Beta',

@@ -752,21 +752,21 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
         ...
 
     """
+    # stdin input passed through terminal
+    if(len(sys.argv) > 1):
+        arguments_list = sys.argv[:]
+        arguments_list[0] = ": generate_climos"
+    # no stdin input provided
+    else:
+        arguments_list = [": generate_climos"]
+        for k in args.keys():
+            arguments_list.append(k)
+            arguments_list.append(args[k])   
+
+    command = " ".join(arguments_list)
+
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
-        
-        # stdin input passed through terminal
-        if(len(sys.argv) > 0):
-            arguments_list = sys.argv[:]
-            arguments_list[0] = ": generate_climos"
-        # no stdin input provided
-        else:
-            arguments_list = [": generate_climos"]
-            for k in args.keys():
-                arguments_list.append(k)
-                arguments_list.append(args[k])   
-
-        command = " ".join(arguments_list)
     
         # update_generate_climos_history for the start has to be called after the first or latter cdo command
         # update_generate_climos_history for the end has to be called after the last cdo command
