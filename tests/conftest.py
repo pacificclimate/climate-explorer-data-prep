@@ -1,6 +1,6 @@
 from pytest import fixture, mark
 from pkg_resources import resource_filename
-from nchelpers import CFDataset
+from nchelpers import CFDataset, standard_climo_periods
 
 
 # helpers
@@ -17,6 +17,14 @@ def tiny_dataset(request):
 def outdir(tmpdir_factory):
     return str(tmpdir_factory.mktemp('outdir'))
 
+
+@fixture(scope='function')
+def period(request):
+    input_dataset = get_dataset(request.param)
+    if (len(input_dataset.climo_periods.keys()) > 0):
+        return list(input_dataset.climo_periods.keys() & standard_climo_periods().keys())[0]
+    else:
+        return ""
 
 @fixture(scope='function')
 def datasets():
