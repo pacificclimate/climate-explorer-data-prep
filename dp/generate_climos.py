@@ -103,6 +103,8 @@ def create_climo_files(
     output file name will be misleading.
 
     """
+    # args used for command line reconstruction for history attribute 
+    # when no stdin argument is given
     args = {
         "" : input_file.filepath(),
         "-c": climo_period,
@@ -752,11 +754,12 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
     """
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
-
+        
+        # stdin input passed through terminal
         if(len(sys.argv) > 0):
             arguments_list = sys.argv[:]
             arguments_list[0] = ": generate_climos"
-
+        # no stdin input provided
         else:
             arguments_list = [": generate_climos"]
             for k in args.keys():
