@@ -6,6 +6,7 @@ import shutil
 import warnings
 
 from datetime import datetime
+from itertools import chain
 import dateutil.parser
 import calendar
 import numpy as np
@@ -754,16 +755,12 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
     """
     # stdin input passed through terminal
     if(len(sys.argv) > 1):
-        arguments_list = sys.argv[:]
-        arguments_list[0] = ": generate_climos"
+        arguments_list = sys.argv[1:]
     # no stdin input provided
     else:
-        arguments_list = [": generate_climos"]
-        for k in args.keys():
-            arguments_list.append(k)
-            arguments_list.append(args[k])   
+        arguments_list = list(chain(*args.items()))
 
-    command = " ".join(arguments_list)
+    command = ": generate_climos " + " ".join(arguments_list)
 
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
