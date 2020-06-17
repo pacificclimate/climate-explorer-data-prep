@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 0.8.2
+*2020 Jun 17*
+
+ * Add `decompose_flow_vectors` in dp package
+ * Add custom function `update_generate_climos_history` to add ability to update `generate_climos` history attribute
+
 ## 0.8.1
 *2020 Jun 05*
 
