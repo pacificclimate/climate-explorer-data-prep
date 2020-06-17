@@ -243,7 +243,7 @@ def create_climo_files(
 
     # Update generate_climos history attribute
     temporal_subset = update_generate_climos_history(
-        args, temporal_subset, t_start_generate_climos, 1
+        args, temporal_subset, t_start_generate_climos, position = 1
     )
 
     # Form climatological means/standard deviations over dependent variables
