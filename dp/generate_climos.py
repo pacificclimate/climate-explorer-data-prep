@@ -753,10 +753,10 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
         ...
 
     """
-    # stdin input passed through terminal
+    # command line input through terminal
     if(len(sys.argv) > 1):
         arguments_list = sys.argv[1:]
-    # no stdin input provided
+    # command line input not given
     else:
         arguments_list = list(chain(*args.items()))
 
