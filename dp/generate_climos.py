@@ -6,6 +6,7 @@ import shutil
 import warnings
 
 from datetime import datetime
+from itertools import chain
 import dateutil.parser
 import calendar
 import numpy as np
@@ -39,6 +40,7 @@ cdo = Cdo()
 
 
 def create_climo_files(
+    climo_period,
     outdir,
     input_file,
     operation,
@@ -102,6 +104,18 @@ def create_climo_files(
     output file name will be misleading.
 
     """
+    # args used for command line reconstruction for history attribute 
+    # when no stdin argument is given
+    args = {
+        "" : input_file.filepath(),
+        "-c": climo_period,
+        "-o": outdir,
+        "-p": operation,
+        "-g": str(convert_longitudes),
+        "-v": str(split_vars),
+        "-i": str(split_intervals),
+        "-r": str(output_resolutions),
+    }
 
     def curr_time_cdo_format():
         """This function returns current time in the format of
@@ -229,7 +243,7 @@ def create_climo_files(
 
     # Update generate_climos history attribute
     temporal_subset = update_generate_climos_history(
-        temporal_subset, t_start_generate_climos, 1
+        args, temporal_subset, t_start_generate_climos, position = 1
     )
 
     # Form climatological means/standard deviations over dependent variables
@@ -371,7 +385,7 @@ def create_climo_files(
     t_end_generate_climos = curr_time_cdo_format()
     # Update generate_climos history attribute
     climo_files = [
-        update_generate_climos_history(climo_file, t_end_generate_climos)
+        update_generate_climos_history(args, climo_file, t_end_generate_climos)
         for climo_file in climo_files
     ]
 
@@ -695,7 +709,7 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
     return climo_filepath
 
 
-def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
+def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=0):
     """This function takes the start time and end time history-attribute-lines
     of generate_climos command. It returns a string of the entire history
     attribute. The result indicates when the generate_climos started and ended.
@@ -739,13 +753,18 @@ def update_generate_climos_history(netCDF_file, time_cdo_format, position=0):
         ...
 
     """
+    # command line input through terminal
+    if(len(sys.argv) > 1):
+        arguments_list = sys.argv[1:]
+    # command line input not given
+    else:
+        arguments_list = list(chain(*args.items()))
+
+    command = ": generate_climos " + " ".join(arguments_list)
+
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
-
-        arguments_list = sys.argv
-        arguments_list[0] = ": generate_climos"
-        command = " ".join(sys.argv)
-        
+    
         # update_generate_climos_history for the start has to be called after the first or latter cdo command
         # update_generate_climos_history for the end has to be called after the last cdo command
         if position != 0:

@@ -56,16 +56,16 @@ def basename_components(filepath):
 
 # Tests
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
-    ('gcm_360_day_cal', 'std', t_start(1965), t_end(1970)),  # test date processing
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('gdd_seasonal', 'mean', t_start(1971), t_end(2000)),  # test seasonal-only
-    ('tr_annual', 'mean', t_start(1961), t_end(1990)),  # test annual-only
-    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm','gcm', 'mean', t_start(1965), t_end(1970)),
+    ('gcm_360_day_cal', 'gcm_360_day_cal', 'std', t_start(1965), t_end(1970)),  # test date processing
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'downscaled_pr', 'std', t_start(1961), t_end(1990)),
+    ('hydromodel_gcm', 'hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'gdd_seasonal', 'mean', t_start(1971), t_end(2000)),  # test seasonal-only
+    ('tr_annual', 'tr_annual', 'mean', t_start(1961), t_end(1990)),  # test annual-only
+    ('daily_prsn', 'daily_prsn', 'mean', t_start(1950), t_end(2100)),
+], indirect=['tiny_dataset', 'period'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -74,11 +74,11 @@ def basename_components(filepath):
     False,
     True,
 ])
-def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_existence(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the expected number of files was created and that the filenames returned by
     create_climo_files are those actually created.
     """
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
     num_vars = len(tiny_dataset.dependent_varnames())
     num_files = 1
@@ -92,14 +92,14 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     assert set(climo_files) == set(os.path.join(outdir, f) for f in os.listdir(outdir))
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'std', t_start(1965), t_end(1970)),
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('gdd_seasonal', 'mean', t_start(1961), t_end(1990)),
-    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm','gcm', 'std', t_start(1965), t_end(1970)),
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'downscaled_pr', 'std', t_start(1961), t_end(1990)),
+    ('hydromodel_gcm', 'hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'gdd_seasonal', 'mean', t_start(1961), t_end(1990)),
+    ('daily_prsn', 'daily_prsn', 'mean', t_start(1950), t_end(2100)),
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -108,14 +108,14 @@ def test_existence(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     False,
     True,
 ])
-def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_filenames(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the filenames are as expected. Tests only the following easy-to-test filename components:
     - variable name
     - frequency
     Testing all the components of the filenames would be a lot of work and would duplicate unit tests for
     the filename generator in nchelpers.
     """
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
     if split_vars:
         varnames = set(tiny_dataset.dependent_varnames())
@@ -132,15 +132,15 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
             assert frequency in 'aClim aClimSD aClimMean saClim saClimSD saClimMean msaClim msaClimSD msaClimMean'.split()
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'std', t_start(1965), t_end(1970)),
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('gdd_seasonal', 'mean', t_start(1981), t_end(2010)),
-    ('tr_annual', 'std', t_start(1960), t_end(1970)),
-    ('daily_prsn', 'mean', t_start(1950), t_end(2100)),
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'downscaled_pr', 'std', t_start(1961), t_end(1990)),
+    ('hydromodel_gcm', 'hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'gdd_seasonal', 'mean', t_start(1981), t_end(2010)),
+    ('tr_annual', 'tr_annual', 'std', t_start(1960), t_end(1970)),
+    ('daily_prsn', 'daily_prsn', 'mean', t_start(1950), t_end(2100)),
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -149,9 +149,9 @@ def test_filenames(outdir, tiny_dataset, operation, t_start, t_end, split_vars, 
     False,
     True,
 ])
-def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_climo_metadata(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the correct climo-specific metadata has been added/updated."""
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
     frequencies = set()
 
@@ -205,17 +205,17 @@ def test_climo_metadata(outdir, tiny_dataset, operation, t_start, t_end, split_v
         }[tiny_dataset.time_resolution]
 
 
-@mark.parametrize('tiny_dataset, comparison', [
-    ('gdd_seasonal', 'greatermean'),
-    ('fd_monthly', 'greatermean'),
-    ('txx_monthly', 'greatermin'),
-    ('tnn_monthly', 'lessermax')
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, comparison', [
+    ('gdd_seasonal', 'gdd_seasonal', 'greatermean'),
+    ('fd_monthly', 'fd_monthly', 'greatermean'),
+    ('txx_monthly', 'txx_monthly', 'greatermin'),
+    ('tnn_monthly', 'tnn_monthly', 'lessermax')
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('t_start, t_end', [
     (t_start(1971), t_end(2000)),
     (t_start(2010), t_end(2039))
     ])
-def test_variable_aggregation(outdir, tiny_dataset, comparison, t_start, t_end):
+def test_variable_aggregation(period, outdir, tiny_dataset, comparison, t_start, t_end):
     """Test that the values for variables aggregated within a year are
     in the expected range. For these variables, the value of a year is
     *not* the mean of the monthly or seasonal values. Checks to make
@@ -237,7 +237,7 @@ def test_variable_aggregation(outdir, tiny_dataset, comparison, t_start, t_end):
         "greatermin": lambda a, b: a.min() > b.min(),
         "lessermax": lambda a, b: a.max() < b.max()
         }[comparison]
-    climo_files = create_climo_files(outdir, tiny_dataset, "mean",
+    climo_files = create_climo_files(period, outdir, tiny_dataset, "mean",
                                      t_start, t_end, split_vars=False,
                                      split_intervals=True)
     for cf in climo_files:
@@ -255,15 +255,15 @@ def test_variable_aggregation(outdir, tiny_dataset, comparison, t_start, t_end):
                     assert test(outvar, invar)
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('wsdi_annual', 'mean', t_start(2010), t_end(2039)),
-    ('wsdi_annual', 'std', t_start(1961), t_end(1990))
-    ], indirect=['tiny_dataset'])
-def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start, t_end):
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('wsdi_annual', 'wsdi_annual', 'mean', t_start(2010), t_end(2039)),
+    ('wsdi_annual', 'wsdi_annual', 'std', t_start(1961), t_end(1990))
+    ], indirect=['period', 'tiny_dataset'])
+def test_duration_variable_resolutions(period, outdir, tiny_dataset, operation, t_start, t_end):
     """Datasets with duration variables (values measuring the number of
     consecutive days something happens) cannot be aggregated into coarser
     time values. Test that output resolution matches input resolution."""
-    climo_files = create_climo_files(outdir, tiny_dataset, operation,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
                                      t_start, t_end, split_vars=False,
                                      split_intervals=False)
     for cf in climo_files:
@@ -271,11 +271,11 @@ def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start,
             assert tiny_dataset.time_resolution == output.time_resolution
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end, var', [
-    ('downscaled_pr', 'mean', t_start(1965), t_end(1970), 'pr'),
-    ('downscaled_pr_packed', 'std', t_start(1965), t_end(1970), 'pr'),
-    ('daily_prsn', 'mean', t_start(1950), t_end(2100), 'prsn'),
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end, var', [
+    ('downscaled_pr', 'downscaled_pr', 'mean', t_start(1965), t_end(1970), 'pr'),
+    ('downscaled_pr_packed', 'downscaled_pr_packed', 'std', t_start(1965), t_end(1970), 'pr'),
+    ('daily_prsn', 'daily_prsn', 'mean', t_start(1950), t_end(2100), 'prsn'),
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -284,12 +284,12 @@ def test_duration_variable_resolutions(outdir, tiny_dataset, operation, t_start,
     False,
     True,
 ])
-def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, var, split_vars, split_intervals):
+def test_pr_units_conversion(period, outdir, tiny_dataset, operation, t_start, t_end, var, split_vars, split_intervals):
     """Test that units conversion for 'pr' variable is performed properly, for both packed and unpacked files.
     Test for unpacked file is pretty elementary: check pr units.
     Test for packed checks that packing params are modified correctly.
     """
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
 
     assert var in tiny_dataset.dependent_varnames()
@@ -312,13 +312,13 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, va
                         assert output_pr_var.add_offset == 0.0
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'std', t_start(1965), t_end(1970)),
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
-    ('downscaled_pr', 'std', t_start(1961), t_end(1990)),
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-    ('gdd_seasonal', 'mean', t_start(1971), t_end(2000))
-], indirect=['tiny_dataset'])
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+    ('downscaled_pr', 'downscaled_pr', 'std', t_start(1961), t_end(1990)),
+    ('hydromodel_gcm', 'hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+    ('gdd_seasonal', 'gdd_seasonal', 'mean', t_start(1971), t_end(2000))
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -327,9 +327,9 @@ def test_pr_units_conversion(outdir, tiny_dataset, operation, t_start, t_end, va
     False,
     True,
 ])
-def test_dependent_variables(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_dependent_variables(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the output files contain the expected dependent variables"""
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
     dependent_varnames_in_cfs = set()
     for fp in climo_files:
@@ -342,12 +342,12 @@ def test_dependent_variables(outdir, tiny_dataset, operation, t_start, t_end, sp
     assert dependent_varnames_in_cfs == set(tiny_dataset.dependent_varnames())
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'mean', t_start(1965), t_end(1970)),
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm', 'gcm', 'mean', t_start(1965), t_end(1970)),
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     # No need to repleat with downscaled_pr
-    ('hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
-], indirect=['tiny_dataset'])
+    ('hydromodel_gcm', 'hydromodel_gcm', 'mean', t_start(1984), t_end(1995)),
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -356,9 +356,9 @@ def test_dependent_variables(outdir, tiny_dataset, operation, t_start, t_end, sp
     False,
     True,
 ])
-def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
+def test_time_and_climo_bounds_vars(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the climo output files contain the expected time values and climo bounds. """
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals)
 
     for fp in climo_files:
@@ -424,12 +424,12 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
                 assert cb[1] == d2n(datetime(t_end.year+1, 1, 1))
 
 
-@mark.parametrize('tiny_dataset, operation, t_start, t_end', [
-    ('gcm', 'std', t_start(1965), t_end(1970)),
-    ('downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
+@mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
+    ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
+    ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
     # No need to repleat with downscaled_pr
-    ('hydromodel_gcm', 'std', t_start(1984), t_end(1995)),
-], indirect=['tiny_dataset'])
+    ('hydromodel_gcm', 'hydromodel_gcm', 'std', t_start(1984), t_end(1995)),
+], indirect=['period', 'tiny_dataset'])
 @mark.parametrize('split_vars', [
     False,
     True,
@@ -442,9 +442,9 @@ def test_time_and_climo_bounds_vars(outdir, tiny_dataset, operation, t_start, t_
     False,
     True,
 ])
-def test_convert_longitudes(outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals, convert_longitudes):
+def test_convert_longitudes(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals, convert_longitudes):
     """Test that longitude conversion is performed correctly."""
-    climo_files = create_climo_files(outdir, tiny_dataset, operation, t_start, t_end,
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals,
                                      convert_longitudes=convert_longitudes)
     input_lon_var = tiny_dataset.lon_var[:]
@@ -479,7 +479,7 @@ def test_convert_longitudes(outdir, tiny_dataset, operation, t_start, t_end, spl
 def test_resolution_filter(outdir, datasets, resolutions, split_intervals):
     tiny_dataset = datasets['tasmax']
     climo_files = create_climo_files(
-        outdir, tiny_dataset, 'mean', t_start(1965), t_end(1970),
+        "", outdir, tiny_dataset, 'mean', t_start(1965), t_end(1970),
         split_vars=False, split_intervals=split_intervals,
         convert_longitudes=False, output_resolutions=resolutions
     )
@@ -491,16 +491,16 @@ def test_resolution_filter(outdir, datasets, resolutions, split_intervals):
         assert len(climo_files) == min(1, len(resolutions))
 
 
-@mark.parametrize(('tiny_dataset'), [
-    'tr_annual'
-], indirect=['tiny_dataset'])
-def test_resolution_warning(outdir, tiny_dataset):
+@mark.parametrize(('period, tiny_dataset'), [
+    ('tr_annual','tr_annual')
+], indirect=['period', 'tiny_dataset'])
+def test_resolution_warning(period, outdir, tiny_dataset):
     '''If we try to compute a monthly climo from an annual file
        there should be zero output files and a warning issued
     '''
     with warns(Warning) as record:
         climo_files = create_climo_files(
-            outdir, tiny_dataset, 'mean', t_start(1965),
+            period, outdir, tiny_dataset, 'mean', t_start(1965),
             t_end(1971), split_vars=True, split_intervals=True,
             convert_longitudes=True, output_resolutions={'monthly'}
         )

@@ -46,6 +46,7 @@ def main(args):
             for period in input_file.climo_periods.keys() & args.climo:
                 t_range = input_file.climo_periods[period]
                 create_climo_files(
+                    period,
                     args.outdir,
                     input_file,
                     args.operation,
