@@ -14,46 +14,21 @@ import sys
 from dp.decompose_flow_vectors import logger, decompose_flow_vectors
 from dp.argparse_helpers import log_level_choices
 
-# NoDimensionsError and NoFlowVariablesError inherit InvalidSourceError
-class InvalidSourceError(Exception):
-    pass
 
-
-class NoDimensionsError(InvalidSourceError):
-    pass
-
-
-class NoFlowVariablesError(InvalidSourceError):
-    pass
-
-
-# VariableNotFoundError, NotAFlowVariableError and NotAVicModelError inherit InvalidVariableError
-class InvalidVariableError(Exception):
-    pass
-
-
-class VariableNotFoundError(InvalidVariableError):
-    pass
-
-
-class NotAFlowVariableError(InvalidVariableError):
-    pass
-
-
-class NotAVicModelError(InvalidVariableError):
-    pass
+def log_and_raise_exception(source, err_msg, exc):
+    logger.critical(err_msg)
+    source.close()
+    raise exc(err_msg)
 
 
 def source_check(source):
     source_file_path = source.filepath()
 
     if not "lon" in source.dimensions or not "lat" in source.dimensions:
-        logger.critical(
-            "{} does not have latitude and longitude dimensions".format(
-                source_file_path
-            )
+        err_msg = "{} does not have latitude and longitude dimensions".format(
+            source_file_path
         )
-        raise NoDimensionsError
+        log_and_raise_exception(source, err_msg, AttributeError)
 
     valid_variables = []
     for v in source.variables:
@@ -67,34 +42,26 @@ def source_check(source):
                 valid_variables.append(v)
 
     if len(valid_variables) == 0:
-        logger.critical(
-            "{} does not have a valid flow variable".format(source_file_path)
-        )
-        source.close()
-        raise NoFlowVariablesError
+        err_msg = "{} does not have a valid flow variable".format(source_file_path)
+        log_and_raise_exception(source, err_msg, ValueError)
 
 
 def variable_check(source, variable):
     source_file_path = source.filepath()
 
     if not variable in source.variables:
-        logger.critical(
-            "Variable {} is not found in {}".format(variable, source_file_path)
-        )
-        source.close()
-        raise VariableNotFoundError
+        err_msg = "Variable {} is not found in {}".format(variable, source_file_path)
+        log_and_raise_exception(source, err_msg, AttributeError)
 
     flow_variable = source.variables[variable]
 
     if not "lon" in flow_variable.dimensions or not "lat" in flow_variable.dimensions:
-        logger.critical("Variable {} is not associated with a grid".format(variable))
-        source.close()
-        raise NotAFlowVariableError
+        err_msg = "Variable {} is not associated with a grid".format(variable)
+        log_and_raise_exception(source, err_msg, AttributeError)
 
     if np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1:
-        logger.critical("Variable {} is not a valid flow routing".format(variable))
-        source.close()
-        raise NotAVicModelError
+        err_msg = "Variable {} is not a valid flow routing".format(variable)
+        log_and_raise_exception(source, err_msg, ValueError)
 
 
 def main(args):
@@ -103,12 +70,12 @@ def main(args):
 
     try:
         source_check(source)
-    except InvalidSourceError:
+    except (AttributeError, ValueError):
         sys.exit(1)
 
     try:
         variable_check(source, args.variable)
-    except InvalidVariableError:
+    except (AttributeError, ValueError):
         sys.exit(2)
 
     decompose_flow_vectors(source, args.dest_file, args.variable)
