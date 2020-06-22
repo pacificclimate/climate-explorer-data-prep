@@ -104,12 +104,12 @@ def main(args):
     try:
         source_check(source)
     except InvalidSourceError:
-        sys.exit()
+        sys.exit(1)
 
     try:
         variable_check(source, args.variable)
     except InvalidVariableError:
-        sys.exit()
+        sys.exit(2)
 
     decompose_flow_vectors(source, args.dest_file, args.variable)
 
