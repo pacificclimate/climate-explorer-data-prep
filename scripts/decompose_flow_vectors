@@ -14,7 +14,7 @@ import sys
 from dp.decompose_flow_vectors import logger, decompose_flow_vectors
 from dp.argparse_helpers import log_level_choices
 
-# NoDimensionsError and NoFlowVariablesError inherits InvalidSourceError
+# NoDimensionsError and NoFlowVariablesError inherit InvalidSourceError
 class InvalidSourceError(Exception):
     pass
 
@@ -27,7 +27,7 @@ class NoFlowVariablesError(InvalidSourceError):
     pass
 
 
-# VariableNotFoundError, NotAFlowVariableError and NotAVicModelError inherits InvalidVariableError
+# VariableNotFoundError, NotAFlowVariableError and NotAVicModelError inherit InvalidVariableError
 class InvalidVariableError(Exception):
     pass
 
