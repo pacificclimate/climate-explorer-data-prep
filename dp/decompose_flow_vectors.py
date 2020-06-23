@@ -16,6 +16,55 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
 
 
+def log_and_raise_exception(source, err_msg, exc):
+    logger.critical(err_msg)
+    source.close()
+    raise exc(err_msg)
+
+
+def source_check(source):
+    source_file_path = source.filepath()
+
+    if not "lon" in source.dimensions or not "lat" in source.dimensions:
+        err_msg = "{} does not have latitude and longitude dimensions".format(
+            source_file_path
+        )
+        log_and_raise_exception(source, err_msg, AttributeError)
+
+    valid_variables = []
+    for v in source.variables:
+        variable = source.variables[v]
+        if (
+            hasattr(variable, "dimensions")
+            and "lon" in variable.dimensions
+            and "lat" in variable.dimensions
+        ):
+            if np.ma.max(variable[:]) <= 9 and np.ma.min(variable[:]) >= 1:
+                valid_variables.append(v)
+
+    if len(valid_variables) == 0:
+        err_msg = "{} does not have a valid flow variable".format(source_file_path)
+        log_and_raise_exception(source, err_msg, ValueError)
+
+
+def variable_check(source, variable):
+    source_file_path = source.filepath()
+
+    if not variable in source.variables:
+        err_msg = "Variable {} is not found in {}".format(variable, source_file_path)
+        log_and_raise_exception(source, err_msg, AttributeError)
+
+    flow_variable = source.variables[variable]
+
+    if not "lon" in flow_variable.dimensions or not "lat" in flow_variable.dimensions:
+        err_msg = "Variable {} is not associated with a grid".format(variable)
+        log_and_raise_exception(source, err_msg, AttributeError)
+
+    if np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1:
+        err_msg = "Variable {} is not a valid flow routing".format(variable)
+        log_and_raise_exception(source, err_msg, ValueError)
+
+
 def decompose_flow_vectors(source, dest_file, variable):
     """
     Process an indexed flow direction netCDF into a vectored netCDF suitable for
