@@ -23,14 +23,19 @@ def check_and_raise_exception(condition, source, err_msg, exc):
         raise exc(err_msg)
 
 
+def dimensions_validity(dimensions):
+    return not "lon" in dimensions or not "lat" in dimensions
+
+
 def source_check(source):
     source_file_path = source.filepath()
 
-    condition = not "lon" in source.dimensions or not "lat" in source.dimensions
     err_msg = "{} does not have latitude and longitude dimensions".format(
         source_file_path
     )
-    check_and_raise_exception(condition, source, err_msg, AttributeError)
+    check_and_raise_exception(
+        dimensions_validity(source.dimensions), source, err_msg, AttributeError
+    )
 
     valid_variables = []
     for v in source.variables:
@@ -57,11 +62,10 @@ def variable_check(source, variable):
 
     flow_variable = source.variables[variable]
 
-    condition = (
-        not "lon" in flow_variable.dimensions or not "lat" in flow_variable.dimensions
-    )
     err_msg = "Variable {} is not associated with a grid".format(variable)
-    check_and_raise_exception(condition, source, err_msg, AttributeError)
+    check_and_raise_exception(
+        dimensions_validity(flow_variable.dimensions), source, err_msg, AttributeError
+    )
 
     condition = np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1
     err_msg = "Variable {} is not a valid flow routing".format(variable)
