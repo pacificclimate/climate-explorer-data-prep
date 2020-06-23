@@ -23,30 +23,32 @@ def check_and_raise_exception(condition, source, err_msg, exc):
         raise exc(err_msg)
 
 
-def dimensions_validity(dimensions):
-    return not "lon" in dimensions or not "lat" in dimensions
+def dimensions_validity(variable):
+    return (
+        hasattr(variable, "dimensions")
+        and "lon" in variable.dimensions
+        and "lat" in variable.dimensions
+    )
 
 
 def source_check(source):
     source_file_path = source.filepath()
 
+    condition = not dimensions_validity(source)
     err_msg = "{} does not have latitude and longitude dimensions".format(
         source_file_path
     )
-    check_and_raise_exception(
-        dimensions_validity(source.dimensions), source, err_msg, AttributeError
-    )
+    check_and_raise_exception(condition, source, err_msg, AttributeError)
 
     valid_variables = []
     for v in source.variables:
         variable = source.variables[v]
         if (
-            hasattr(variable, "dimensions")
-            and "lon" in variable.dimensions
-            and "lat" in variable.dimensions
+            (dimensions_validity(variable))
+            and np.ma.max(variable[:]) <= 9
+            and np.ma.min(variable[:]) >= 1
         ):
-            if np.ma.max(variable[:]) <= 9 and np.ma.min(variable[:]) >= 1:
-                valid_variables.append(v)
+            valid_variables.append(v)
 
     condition = len(valid_variables) == 0
     err_msg = "{} does not have a valid flow variable".format(source_file_path)
@@ -62,10 +64,9 @@ def variable_check(source, variable):
 
     flow_variable = source.variables[variable]
 
+    condition = not dimensions_validity(flow_variable)
     err_msg = "Variable {} is not associated with a grid".format(variable)
-    check_and_raise_exception(
-        dimensions_validity(flow_variable.dimensions), source, err_msg, AttributeError
-    )
+    check_and_raise_exception(condition, source, err_msg, AttributeError)
 
     condition = np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1
     err_msg = "Variable {} is not a valid flow routing".format(variable)
