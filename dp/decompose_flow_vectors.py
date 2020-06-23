@@ -16,8 +16,8 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a script
 
 
-def check_and_raise_exception(condition, source, err_msg, exc):
-    if condition:
+def check_for_exception(condition, source, exc, err_msg):
+    if not condition:
         logger.critical(err_msg)
         source.close()
         raise exc(err_msg)
@@ -34,43 +34,64 @@ def dimensions_validity(variable):
 def source_check(source):
     source_file_path = source.filepath()
 
-    condition = not dimensions_validity(source)
-    err_msg = "{} does not have latitude and longitude dimensions".format(
-        source_file_path
+    condition = dimensions_validity(source)
+    check_for_exception(
+        condition,
+        source,
+        AttributeError,
+        err_msg="{} does not have latitude and longitude dimensions".format(
+            source_file_path
+        ),
     )
-    check_and_raise_exception(condition, source, err_msg, AttributeError)
 
-    valid_variables = []
-    for v in source.variables:
-        variable = source.variables[v]
+    variables = source.variables
+    valid_variables = [
+        v
+        for v in variables
         if (
-            (dimensions_validity(variable))
-            and np.ma.max(variable[:]) <= 9
-            and np.ma.min(variable[:]) >= 1
-        ):
-            valid_variables.append(v)
+            (dimensions_validity(variables[v]))
+            and np.ma.max(variables[v][:]) <= 9
+            and np.ma.min(variables[v][:]) >= 1
+        )
+    ]
 
-    condition = len(valid_variables) == 0
-    err_msg = "{} does not have a valid flow variable".format(source_file_path)
-    check_and_raise_exception(condition, source, err_msg, ValueError)
+    condition = len(valid_variables) > 0
+    check_for_exception(
+        condition,
+        source,
+        ValueError,
+        err_msg="{} does not have a valid flow variable".format(source_file_path),
+    )
 
 
 def variable_check(source, variable):
     source_file_path = source.filepath()
 
-    condition = not variable in source.variables
-    err_msg = "Variable {} is not found in {}".format(variable, source_file_path)
-    check_and_raise_exception(condition, source, err_msg, AttributeError)
+    condition = variable in source.variables
+    check_for_exception(
+        condition,
+        source,
+        AttributeError,
+        err_msg="Variable {} is not found in {}".format(variable, source_file_path),
+    )
 
     flow_variable = source.variables[variable]
 
-    condition = not dimensions_validity(flow_variable)
-    err_msg = "Variable {} is not associated with a grid".format(variable)
-    check_and_raise_exception(condition, source, err_msg, AttributeError)
+    condition = dimensions_validity(flow_variable)
+    check_for_exception(
+        condition,
+        source,
+        AttributeError,
+        err_msg="Variable {} is not associated with a grid".format(variable),
+    )
 
-    condition = np.ma.max(flow_variable[:]) > 9 or np.ma.min(flow_variable[:]) < 1
-    err_msg = "Variable {} is not a valid flow routing".format(variable)
-    check_and_raise_exception(condition, source, err_msg, ValueError)
+    condition = np.ma.max(flow_variable[:]) <= 9 and np.ma.min(flow_variable[:]) >= 1
+    check_for_exception(
+        condition,
+        source,
+        ValueError,
+        err_msg="Variable {} is not a valid flow routing".format(variable),
+    )
 
 
 def decompose_flow_vectors(source, dest_file, variable):
