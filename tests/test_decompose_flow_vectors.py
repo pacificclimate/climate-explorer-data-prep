@@ -22,10 +22,12 @@ def create_routing_file(name, numlats, numlons, routes):
     lats = testfile.createVariable("lat", "f8", ("lat"))
     lons = testfile.createVariable("lon", "f8", ("lon"))
     flows = testfile.createVariable("flow", "f8", ("lat", "lon"))
+    wrong_flows = testfile.createVariable("wrong_flow", "f8", ("lat", "lon"))
 
     lats[:] = range(45, 60, int(15 / numlats))
     lons[:] = range(-125, -110, int(15 / numlons))
     flows[:] = routes
+    wrong_flows[:] = [100, -25, 358, 14, 5, 68, -7, -128, 15]
 
     testfile.close()
 
@@ -82,18 +84,21 @@ def test_missing_data():
     os.remove(outfile)
 
 
+def assert_SystemExit_code(infile, outfile, variable, expected):
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        subprocess.check_call(
+            ["python", "./scripts/decompose_flow_vectors", infile, outfile, variable,]
+        )
+    assert e.value.returncode == expected
+
+
 def test_source_check():
     timestamp = datetime.datetime.now().microsecond
     infile = "testinput{}.nc".format(timestamp)
     outfile = "testoutput{}.nc".format(timestamp)
     create_routing_file(infile, 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 15])
 
-    with pytest.raises(subprocess.CalledProcessError) as e:
-        subprocess.check_call(
-            ["python", "./scripts/decompose_flow_vectors", infile, outfile, "flow"]
-        )
-    assert e.type == subprocess.CalledProcessError
-    assert e.value.returncode == 1
+    assert_SystemExit_code(infile, outfile, "flow", 1)
 
     os.remove(infile)
 
@@ -104,17 +109,8 @@ def test_variable_check():
     outfile = "testoutput{}.nc".format(timestamp)
     create_routing_file(infile, 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-    with pytest.raises(subprocess.CalledProcessError) as e:
-        subprocess.check_call(
-            [
-                "python",
-                "./scripts/decompose_flow_vectors",
-                infile,
-                outfile,
-                "invalid_variable_name",
-            ]
-        )
-    assert e.type == subprocess.CalledProcessError
-    assert e.value.returncode == 2
+    assert_SystemExit_code(infile, outfile, "lat", 2)
+    assert_SystemExit_code(infile, outfile, "invalid_variable_name", 2)
+    assert_SystemExit_code(infile, outfile, "wrong_flow", 2)
 
     os.remove(infile)
