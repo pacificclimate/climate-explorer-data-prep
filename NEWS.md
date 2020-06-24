@@ -1,5 +1,10 @@
 # News / Release Notes
 
+## 0.8.3
+*2020 Jun 23*
+
+ * Add ability to check input validities for `decompose_flow_vectors`
+
 ## 0.8.2
 *2020 Jun 17*
 
