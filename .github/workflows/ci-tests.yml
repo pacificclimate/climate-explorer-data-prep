@@ -27,4 +27,4 @@ jobs:
         pip install .
     - name: Test with pytest
       run: |
-        py.test -v --ignore=tests/test_decompose_flow_vectors.py
+        py.test -v tests/test_units_helpers.py tests/test_update_metadata.py tests/test_decompose_flow_vectors.py
