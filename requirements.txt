@@ -5,3 +5,5 @@ pint
 PyYAML
 # for testing
 pytest
+mock
+pytest_mock
