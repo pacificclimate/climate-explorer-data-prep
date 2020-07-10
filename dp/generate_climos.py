@@ -17,7 +17,7 @@ from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
 from enum import Enum
 
-from nchelpers import CFDataset
+from nchelpers import CFDataset, standard_climo_periods
 from nchelpers.date_utils import d2s
 
 from dp.argparse_helpers import strtobool, log_level_choices
@@ -40,11 +40,11 @@ cdo = Cdo()
 
 
 def generate_climos(
-    dry_run,
     filepaths,
-    climo,
     outdir,
     operation,
+    climo=standard_climo_periods().keys(),
+    dry_run=False,
     convert_longitudes=True,
     split_vars=True,
     split_intervals=True,

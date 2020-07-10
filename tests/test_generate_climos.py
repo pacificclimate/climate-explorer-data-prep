@@ -21,11 +21,12 @@ from datetime import datetime
 from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
 from pytest import mark, warns
+from pytest_mock import mocker
 
 from nchelpers import CFDataset
 
 from dp.units_helpers import Unit
-from dp.generate_climos import create_climo_files
+from dp.generate_climos import generate_climos, create_climo_files
 
 
 # Helper functions
@@ -53,8 +54,13 @@ def basename_components(filepath):
     f = next(i for i, piece in enumerate(pieces) if piece in frequency_options)
     return ['_'.join(pieces[:f])] + pieces[f:]
 
-
 # Tests
+
+def test_create_climo_files_call(mocker):
+    mock_ccf = mocker.patch("dp.generate_climos.create_climo_files")
+    generate_climos(["./tests/data/tiny_daily_pr.nc"], "mean", "output")
+    mock_ccf.assert_called()
+
 
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm','gcm', 'mean', t_start(1965), t_end(1970)),
