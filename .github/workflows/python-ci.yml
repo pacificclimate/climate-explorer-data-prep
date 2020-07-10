@@ -1,4 +1,4 @@
-name: CI Tests
+name: Python CI
 
 on: push
 
@@ -25,6 +25,11 @@ jobs:
         pip install -U pip pytest
         pip install -r requirements.txt
         pip install .
-    - name: Test with pytest
+    - name: Test with pytest (full)
+      if: github.ref == 'refs/heads/master'
       run: |
-        py.test -v tests/test_units_helpers.py tests/test_update_metadata.py tests/test_decompose_flow_vectors.py
+        py.test -v
+    - name: Test with pytest (fast)
+      if: github.ref != 'refs/heads/master'
+      run: |
+        py.test -m "not slow" -v
