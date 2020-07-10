@@ -1,7 +1,8 @@
 # PCIC Climate Explorer Data Preparation Tools
 
-[![Build Status](https://travis-ci.org/pacificclimate/climate-explorer-data-prep.svg?branch=master)](https://travis-ci.org/pacificclimate/climate-explorer-data-prep)
 [![Code Climate](https://codeclimate.com/github/pacificclimate/climate-explorer-data-prep/badges/gpa.svg)](https://codeclimate.com/github/pacificclimate/climate-explorer-data-prep)
+![Python CI](https://github.com/pacificclimate/climate-explorer-data-prep/workflows/Python%20CI/badge.svg)
+![Publish Python Package](https://github.com/pacificclimate/climate-explorer-data-prep/workflows/Publish%20Python%20Package/badge.svg)
 
 ## Historical note
 
@@ -75,6 +76,7 @@ git commit -m"Bump to version x.x.x"
 git tag -a -m"x.x.x" x.x.x
 git push --follow-tags
   ```
+4. [Github Actions](https://github.com/pacificclimate/climate-explorer-data-prep/blob/i130-full-actions/.github/workflows/pypi-publish.yml) will automatically build and publish the package to our pypi server
 
 ## Scripts
 
