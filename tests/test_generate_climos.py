@@ -1,7 +1,7 @@
 import imp
-from mock import Mock
 from dp.generate_climos import create_climo_files
 from nchelpers import standard_climo_periods
+from pytest_mock import mocker
 
 gc = imp.load_source("generate_climos", "scripts/generate_climos")
 
@@ -33,9 +33,10 @@ class ArgumentParserMocker:
         if not resolutions:
             self.resolutions = ["yearly", "seasonal", "monthly"]
 
+def test_create_climo_files_call(mocker):
+    mock = mocker.patch("dp.generate_climos.create_climo_files")
 
-def test_main():
-    mock = Mock(spec=create_climo_files)
     args = ArgumentParserMocker(["./tests/data/tiny_daily_pr.nc"], "mean", "output")
     gc.main(args)
-    mock.assert_called_once()
+
+    mock.assert_any_call()
