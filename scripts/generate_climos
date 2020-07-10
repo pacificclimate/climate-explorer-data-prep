@@ -5,57 +5,21 @@ import sys
 
 from nchelpers import CFDataset, standard_climo_periods
 from dp.argparse_helpers import strtobool, log_level_choices
-from dp.generate_climos import logger, create_climo_files
+from dp.generate_climos import logger, generate_climos
 
 
 def main(args):
-    if args.dry_run:
-        logger.info("DRY RUN")
-        for filepath in args.filepaths:
-            logger.info("")
-            logger.info("File: {}".format(filepath))
-            try:
-                input_file = CFDataset(filepath)
-            except Exception as e:
-                logger.info("{}: {}".format(e.__class__.__name__, e))
-            else:
-                periods = input_file.climo_periods.keys() & args.climo
-                logger.info("climo_periods: {}".format(periods))
-                for attr in "project institution model emissions run".split():
-                    try:
-                        logger.info(
-                            "{}: {}".format(attr, getattr(input_file.metadata, attr))
-                        )
-                    except Exception as e:
-                        logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
-                logger.info(
-                    "dependent_varnames: {}".format(input_file.dependent_varnames())
-                )
-                for attr in "time_resolution is_multi_year_mean".split():
-                    logger.info("{}: {}".format(attr, getattr(input_file, attr)))
-        sys.exit(0)
-
-    for filepath in args.filepaths:
-        logger.info("")
-        logger.info("Processing: {}".format(filepath))
-        try:
-            input_file = CFDataset(filepath)
-        except Exception as e:
-            logger.info("{}: {}".format(e.__class__.__name__, e))
-        else:
-            for period in input_file.climo_periods.keys() & args.climo:
-                t_range = input_file.climo_periods[period]
-                create_climo_files(
-                    period,
-                    args.outdir,
-                    input_file,
-                    args.operation,
-                    *t_range,
-                    convert_longitudes=args.convert_longitudes,
-                    split_vars=args.split_vars,
-                    split_intervals=args.split_intervals,
-                    output_resolutions=args.resolutions
-                )
+    generate_climos(
+        args.dry_run,
+        args.filepaths,
+        args.climo,
+        args.outdir,
+        args.operation,
+        convert_longitudes=args.convert_longitudes,
+        split_vars=args.split_vars,
+        split_intervals=args.split_intervals,
+        resolutions=args.resolutions,
+    )
 
 
 if __name__ == "__main__":

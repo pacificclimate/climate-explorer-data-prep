@@ -39,6 +39,66 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
+def generate_climos(
+    dry_run,
+    filepaths,
+    climo,
+    outdir,
+    operation,
+    convert_longitudes=True,
+    split_vars=True,
+    split_intervals=True,
+    resolutions={"yearly", "seasonal", "monthly"},
+):
+    if dry_run:
+        logger.info("DRY RUN")
+        for filepath in filepaths:
+            logger.info("")
+            logger.info("File: {}".format(filepath))
+            try:
+                input_file = CFDataset(filepath)
+            except Exception as e:
+                logger.info("{}: {}".format(e.__class__.__name__, e))
+            else:
+                periods = input_file.climo_periods.keys() & climo
+                logger.info("climo_periods: {}".format(periods))
+                for attr in "project institution model emissions run".split():
+                    try:
+                        logger.info(
+                            "{}: {}".format(attr, getattr(input_file.metadata, attr))
+                        )
+                    except Exception as e:
+                        logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
+                logger.info(
+                    "dependent_varnames: {}".format(input_file.dependent_varnames())
+                )
+                for attr in "time_resolution is_multi_year_mean".split():
+                    logger.info("{}: {}".format(attr, getattr(input_file, attr)))
+        sys.exit(0)
+
+    for filepath in filepaths:
+        logger.info("")
+        logger.info("Processing: {}".format(filepath))
+        try:
+            input_file = CFDataset(filepath)
+        except Exception as e:
+            logger.info("{}: {}".format(e.__class__.__name__, e))
+        else:
+            for period in input_file.climo_periods.keys() & climo:
+                t_range = input_file.climo_periods[period]
+                create_climo_files(
+                    period,
+                    outdir,
+                    input_file,
+                    operation,
+                    *t_range,
+                    convert_longitudes=convert_longitudes,
+                    split_vars=split_vars,
+                    split_intervals=split_intervals,
+                    output_resolutions=resolutions
+                )
+
+
 def create_climo_files(
     climo_period,
     outdir,
@@ -49,7 +109,7 @@ def create_climo_files(
     convert_longitudes=True,
     split_vars=True,
     split_intervals=True,
-    output_resolutions={"yearly", "seasonal", "monthly"},
+    resolutions={"yearly", "seasonal", "monthly"},
 ):
     """Generate climatological files from an input file and a selected time range.
 
@@ -104,10 +164,10 @@ def create_climo_files(
     output file name will be misleading.
 
     """
-    # args used for command line reconstruction for history attribute 
+    # args used for command line reconstruction for history attribute
     # when no stdin argument is given
     args = {
-        "" : input_file.filepath(),
+        "": input_file.filepath(),
         "-c": climo_period,
         "-o": outdir,
         "-p": operation,
@@ -243,7 +303,7 @@ def create_climo_files(
 
     # Update generate_climos history attribute
     temporal_subset = update_generate_climos_history(
-        args, temporal_subset, t_start_generate_climos, position = 1
+        args, temporal_subset, t_start_generate_climos, position=1
     )
 
     # Form climatological means/standard deviations over dependent variables
@@ -754,7 +814,7 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
 
     """
     # command line input through terminal
-    if(len(sys.argv) > 1):
+    if len(sys.argv) > 1:
         arguments_list = sys.argv[1:]
     # command line input not given
     else:
@@ -764,7 +824,7 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
 
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
-    
+
         # update_generate_climos_history for the start has to be called after the first or latter cdo command
         # update_generate_climos_history for the end has to be called after the last cdo command
         if position != 0:
