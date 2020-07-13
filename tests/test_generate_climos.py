@@ -91,9 +91,6 @@ def test_create_climo_files_call(
         split_intervals=split_intervals,
         resolutions=resolutions,
     )
-
-    print(convert_longitudes)
-
     mock_ccf.assert_called_with(
         ANY,
         outdir,
