@@ -11,9 +11,9 @@ from dp.generate_climos import logger, generate_climos
 def main(args):
     generate_climos(
         args.filepaths,
-        args.climo,
         args.outdir,
         args.operation,
+        climo=args.climo,
         dry_run=args.dry_run,
         convert_longitudes=args.convert_longitudes,
         split_vars=args.split_vars,
