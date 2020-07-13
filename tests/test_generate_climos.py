@@ -56,9 +56,20 @@ def basename_components(filepath):
 
 # Tests
 
-def test_create_climo_files_call(mocker):
+@mark.parametrize('tiny_filepath', [
+    ('gcm'),
+    ('gcm_360_day_cal'),
+    ('downscaled_tasmax'),
+    ('downscaled_pr'),
+    ('hydromodel_gcm'),
+    ('gdd_seasonal'),
+    ('tr_annual'),
+    ('daily_prsn'),
+], indirect=['tiny_filepath'])
+@mark.parametrize('operation',['std', 'mean'])
+def test_create_climo_files_call(mocker, outdir, tiny_filepath, operation):
     mock_ccf = mocker.patch("dp.generate_climos.create_climo_files")
-    generate_climos(["./tests/data/tiny_daily_pr.nc"], "mean", "output")
+    generate_climos([tiny_filepath], outdir, operation)
     mock_ccf.assert_called()
 
 
@@ -512,5 +523,5 @@ def test_resolution_warning(period, outdir, tiny_dataset):
         )
 
     assert climo_files == []
-    assert len(record) == 1
-    assert "None of the selected output resolutions" in str(record[0].message)
+    assert len(record) > 0
+    assert "None of the selected output resolutions" in str(record[-1].message)

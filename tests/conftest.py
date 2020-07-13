@@ -9,6 +9,11 @@ def get_dataset(filename):
 
 
 @fixture
+def tiny_filepath(request):
+    return resource_filename(__name__, 'data/tiny_{}.nc').format(request.param)
+
+
+@fixture
 def tiny_dataset(request):
     return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(request.param))
 
