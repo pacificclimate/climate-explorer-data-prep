@@ -39,43 +39,43 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
+def dry_run_handler(filepaths, climo):
+    logger.info("DRY RUN")
+    for filepath in filepaths:
+        logger.info("")
+        logger.info("File: {}".format(filepath))
+        try:
+            input_file = CFDataset(filepath)
+        except Exception as e:
+            logger.info("{}: {}".format(e.__class__.__name__, e))
+        else:
+            periods = input_file.climo_periods.keys() & climo
+            logger.info("climo_periods: {}".format(periods))
+            for attr in "project institution model emissions run".split():
+                try:
+                    logger.info(
+                        "{}: {}".format(attr, getattr(input_file.metadata, attr))
+                    )
+                except Exception as e:
+                    logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
+            logger.info(
+                "dependent_varnames: {}".format(input_file.dependent_varnames())
+            )
+            for attr in "time_resolution is_multi_year_mean".split():
+                logger.info("{}: {}".format(attr, getattr(input_file, attr)))
+    sys.exit(0)
+
+
 def generate_climos(
     filepaths,
     outdir,
     operation,
     climo=standard_climo_periods().keys(),
-    dry_run=False,
     convert_longitudes=True,
     split_vars=True,
     split_intervals=True,
     resolutions={"yearly", "seasonal", "monthly"},
 ):
-    if dry_run:
-        logger.info("DRY RUN")
-        for filepath in filepaths:
-            logger.info("")
-            logger.info("File: {}".format(filepath))
-            try:
-                input_file = CFDataset(filepath)
-            except Exception as e:
-                logger.info("{}: {}".format(e.__class__.__name__, e))
-            else:
-                periods = input_file.climo_periods.keys() & climo
-                logger.info("climo_periods: {}".format(periods))
-                for attr in "project institution model emissions run".split():
-                    try:
-                        logger.info(
-                            "{}: {}".format(attr, getattr(input_file.metadata, attr))
-                        )
-                    except Exception as e:
-                        logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
-                logger.info(
-                    "dependent_varnames: {}".format(input_file.dependent_varnames())
-                )
-                for attr in "time_resolution is_multi_year_mean".split():
-                    logger.info("{}: {}".format(attr, getattr(input_file, attr)))
-        sys.exit(0)
-
     for filepath in filepaths:
         logger.info("")
         logger.info("Processing: {}".format(filepath))

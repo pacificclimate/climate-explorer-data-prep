@@ -5,16 +5,18 @@ import sys
 
 from nchelpers import CFDataset, standard_climo_periods
 from dp.argparse_helpers import strtobool, log_level_choices
-from dp.generate_climos import logger, generate_climos
+from dp.generate_climos import logger, generate_climos, dry_run_handler
 
 
 def main(args):
+    if args.dry_run:
+        dry_run_handler(args.filepaths, args.climo)
+
     generate_climos(
         args.filepaths,
         args.outdir,
         args.operation,
         climo=args.climo,
-        dry_run=args.dry_run,
         convert_longitudes=args.convert_longitudes,
         split_vars=args.split_vars,
         split_intervals=args.split_intervals,
