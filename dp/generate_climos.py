@@ -38,6 +38,7 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 # Instantiate CDO interface
 cdo = Cdo()
 
+
 def has_climo_periods(input_file, climo):
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
@@ -45,12 +46,14 @@ def has_climo_periods(input_file, climo):
         logger.info(f"{input_file.filepath()} has no variable 'climo_periods'")        
     return periods
 
+
 def is_NetCDF(filepath):
     try:
         return CFDataset(filepath)
     except Exception as e:
         logger.info("{}: {}".format(e.__class__.__name__, e))
         sys.exit()
+
 
 def dry_run_handler(filepath, climo):
     logger.info("")
@@ -76,16 +79,12 @@ def generate_climos(
     filepath,
     outdir,
     operation,
-    climo=standard_climo_periods().keys(),
-    convert_longitudes=True,
-    split_vars=True,
-    split_intervals=True,
-    resolutions={"yearly", "seasonal", "monthly"},
+    **kwargs,
 ):
     logger.info("")
     logger.info("Processing: {}".format(filepath))
     input_file = is_NetCDF(filepath)
-    periods =  has_climo_periods(input_file, climo)
+    periods =  has_climo_periods(input_file, kwargs["climo"])
 
     for period in periods:
         t_range = input_file.climo_periods[period]
@@ -95,10 +94,10 @@ def generate_climos(
             input_file,
             operation,
             *t_range,
-            convert_longitudes=convert_longitudes,
-            split_vars=split_vars,
-            split_intervals=split_intervals,
-            output_resolutions=resolutions
+            convert_longitudes=kwargs["convert_longitudes"],
+            split_vars=kwargs["split_vars"],
+            split_intervals=kwargs["split_intervals"],
+            output_resolutions=kwargs["resolutions"]
         )
 
 
