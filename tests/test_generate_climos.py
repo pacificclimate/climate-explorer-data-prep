@@ -83,7 +83,7 @@ def test_create_climo_files_call(
 ):
     mock_ccf = mocker.patch("dp.generate_climos.create_climo_files")
     generate_climos(
-        [tiny_filepath], 
+        tiny_filepath, 
         outdir, 
         operation, 
         convert_longitudes=convert_longitudes,

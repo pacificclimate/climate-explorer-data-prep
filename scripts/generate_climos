@@ -10,18 +10,22 @@ from dp.generate_climos import logger, generate_climos, dry_run_handler
 
 def main(args):
     if args.dry_run:
-        dry_run_handler(args.filepaths, args.climo)
+        logger.info("DRY RUN")
+        for filepath in args.filepaths:
+            dry_run_handler(filepath, args.climo)
+        sys.exit(0)
 
-    generate_climos(
-        args.filepaths,
-        args.outdir,
-        args.operation,
-        climo=args.climo,
-        convert_longitudes=args.convert_longitudes,
-        split_vars=args.split_vars,
-        split_intervals=args.split_intervals,
-        resolutions=args.resolutions,
-    )
+    for filepath in args.filepaths:
+        generate_climos(
+            filepath,
+            args.outdir,
+            args.operation,
+            climo=args.climo,
+            convert_longitudes=args.convert_longitudes,
+            split_vars=args.split_vars,
+            split_intervals=args.split_intervals,
+            resolutions=args.resolutions,
+        )
 
 
 if __name__ == "__main__":

@@ -38,36 +38,42 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 # Instantiate CDO interface
 cdo = Cdo()
 
+def has_climo_periods(input_file, climo):
+    periods = input_file.climo_periods.keys() & climo
+    logger.info("climo_periods: {}".format(periods))
+    if len(periods) == 0:
+        logger.info(f"{input_file.filepath()} has no variable 'climo_periods'")        
+    return periods
 
-def dry_run_handler(filepaths, climo):
-    logger.info("DRY RUN")
-    for filepath in filepaths:
-        logger.info("")
-        logger.info("File: {}".format(filepath))
+def is_NetCDF(filepath):
+    try:
+        return CFDataset(filepath)
+    except Exception as e:
+        logger.info("{}: {}".format(e.__class__.__name__, e))
+        sys.exit()
+
+def dry_run_handler(filepath, climo):
+    logger.info("")
+    logger.info("File: {}".format(filepath))
+    input_file = is_NetCDF(filepath)
+    has_climo_periods(input_file, climo)
+
+    for attr in ['project', 'institution', 'model', 'emissions', 'run']:
         try:
-            input_file = CFDataset(filepath)
-        except Exception as e:
-            logger.info("{}: {}".format(e.__class__.__name__, e))
-        else:
-            periods = input_file.climo_periods.keys() & climo
-            logger.info("climo_periods: {}".format(periods))
-            for attr in "project institution model emissions run".split():
-                try:
-                    logger.info(
-                        "{}: {}".format(attr, getattr(input_file.metadata, attr))
-                    )
-                except Exception as e:
-                    logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
             logger.info(
-                "dependent_varnames: {}".format(input_file.dependent_varnames())
+                "{}: {}".format(attr, getattr(input_file.metadata, attr))
             )
-            for attr in "time_resolution is_multi_year_mean".split():
-                logger.info("{}: {}".format(attr, getattr(input_file, attr)))
-    sys.exit(0)
+        except Exception as e:
+            logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
+    logger.info(
+        "dependent_varnames: {}".format(input_file.dependent_varnames())
+    )
+    for attr in ['time_resolution', 'is_multi_year_mean']:
+        logger.info("{}: {}".format(attr, getattr(input_file, attr)))
 
 
 def generate_climos(
-    filepaths,
+    filepath,
     outdir,
     operation,
     climo=standard_climo_periods().keys(),
@@ -76,27 +82,24 @@ def generate_climos(
     split_intervals=True,
     resolutions={"yearly", "seasonal", "monthly"},
 ):
-    for filepath in filepaths:
-        logger.info("")
-        logger.info("Processing: {}".format(filepath))
-        try:
-            input_file = CFDataset(filepath)
-        except Exception as e:
-            logger.info("{}: {}".format(e.__class__.__name__, e))
-        else:
-            for period in input_file.climo_periods.keys() & climo:
-                t_range = input_file.climo_periods[period]
-                create_climo_files(
-                    period,
-                    outdir,
-                    input_file,
-                    operation,
-                    *t_range,
-                    convert_longitudes=convert_longitudes,
-                    split_vars=split_vars,
-                    split_intervals=split_intervals,
-                    output_resolutions=resolutions
-                )
+    logger.info("")
+    logger.info("Processing: {}".format(filepath))
+    input_file = is_NetCDF(filepath)
+    periods =  has_climo_periods(input_file, climo)
+
+    for period in periods:
+        t_range = input_file.climo_periods[period]
+        create_climo_files(
+            period,
+            outdir,
+            input_file,
+            operation,
+            *t_range,
+            convert_longitudes=convert_longitudes,
+            split_vars=split_vars,
+            split_intervals=split_intervals,
+            output_resolutions=resolutions
+        )
 
 
 def create_climo_files(
