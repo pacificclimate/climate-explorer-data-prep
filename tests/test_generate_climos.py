@@ -7,6 +7,9 @@ that they use to determine their behaviour, i.e. what input file to return or pr
 
 The key indirected fixtures are:
 
+    tiny_filepath
+        param: (str) selects the input file to be processed by generate_climos
+        returns: (str) input file path to be processed by generate_climos
     tiny_dataset
         param: (str) selects the input file to be processed by create_climo_files
         returns: (nchelpers.CFDataset) input file to be processed by create_climo_files
@@ -22,6 +25,7 @@ from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
 from pytest import mark, warns
 from pytest_mock import mocker
+from unittest.mock import ANY
 
 from nchelpers import CFDataset
 
@@ -56,21 +60,52 @@ def basename_components(filepath):
 
 # Tests
 
-@mark.parametrize('tiny_filepath', [
-    ('gcm'),
-    ('gcm_360_day_cal'),
-    ('downscaled_tasmax'),
-    ('downscaled_pr'),
-    ('hydromodel_gcm'),
-    ('gdd_seasonal'),
-    ('tr_annual'),
-    ('daily_prsn'),
+@mark.parametrize('tiny_filepath, operation', [
+    ('downscaled_tasmax', 'std'),
+    ('downscaled_pr', 'mean'),
+    ('gdd_seasonal', 'std'),
+    ('tr_annual', 'mean'),
 ], indirect=['tiny_filepath'])
-@mark.parametrize('operation',['std', 'mean'])
-def test_create_climo_files_call(mocker, outdir, tiny_filepath, operation):
+@mark.parametrize('convert_longitudes, split_vars, split_intervals, resolutions',[
+        (True, True, True, "yearly"), 
+        (False, False, False, "seasonal"),
+    ]
+)
+def test_create_climo_files_call(
+    mocker, 
+    outdir, 
+    tiny_filepath, 
+    operation, 
+    convert_longitudes,
+    split_vars,
+    split_intervals,
+    resolutions,
+):
     mock_ccf = mocker.patch("dp.generate_climos.create_climo_files")
-    generate_climos([tiny_filepath], outdir, operation)
-    mock_ccf.assert_called()
+    generate_climos(
+        [tiny_filepath], 
+        outdir, 
+        operation, 
+        convert_longitudes=convert_longitudes,
+        split_vars=split_vars,
+        split_intervals=split_intervals,
+        resolutions=resolutions,
+    )
+
+    print(convert_longitudes)
+
+    mock_ccf.assert_called_with(
+        ANY,
+        outdir,
+        ANY,
+        operation,
+        ANY,
+        ANY,
+        convert_longitudes=convert_longitudes,
+        split_vars=split_vars,
+        split_intervals=split_intervals,
+        output_resolutions=resolutions,
+    )
 
 
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
