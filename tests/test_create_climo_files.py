@@ -56,6 +56,7 @@ def basename_components(filepath):
 
 # Tests
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm','gcm', 'mean', t_start(1965), t_end(1970)),
     ('gcm_360_day_cal', 'gcm_360_day_cal', 'std', t_start(1965), t_end(1970)),  # test date processing
@@ -92,6 +93,7 @@ def test_existence(period, outdir, tiny_dataset, operation, t_start, t_end, spli
     assert set(climo_files) == set(os.path.join(outdir, f) for f in os.listdir(outdir))
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm','gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
@@ -132,6 +134,7 @@ def test_filenames(period, outdir, tiny_dataset, operation, t_start, t_end, spli
             assert frequency in 'aClim aClimSD aClimMean saClim saClimSD saClimMean msaClim msaClimSD msaClimMean'.split()
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
@@ -228,7 +231,7 @@ def test_variable_aggregation(period, outdir, tiny_dataset, comparison, t_start,
     if used for this test.
     When aggregated from monthly or seasonal scale to yearly scale:
      - Counted variables should have larger means, minimums, and maximums.
-     - Maximum variables should have larger minimums and means but similar 
+     - Maximum variables should have larger minimums and means but similar
        maximums.
      - Minimum variables should have smaller maximums and means but similar
        minimums."""
@@ -271,6 +274,7 @@ def test_duration_variable_resolutions(period, outdir, tiny_dataset, operation, 
             assert tiny_dataset.time_resolution == output.time_resolution
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end, var', [
     ('downscaled_pr', 'downscaled_pr', 'mean', t_start(1965), t_end(1970), 'pr'),
     ('downscaled_pr_packed', 'downscaled_pr_packed', 'std', t_start(1965), t_end(1970), 'pr'),
@@ -312,6 +316,7 @@ def test_pr_units_conversion(period, outdir, tiny_dataset, operation, t_start, t
                         assert output_pr_var.add_offset == 0.0
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
@@ -342,6 +347,7 @@ def test_dependent_variables(period, outdir, tiny_dataset, operation, t_start, t
     assert dependent_varnames_in_cfs == set(tiny_dataset.dependent_varnames())
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm', 'gcm', 'mean', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
@@ -424,6 +430,7 @@ def test_time_and_climo_bounds_vars(period, outdir, tiny_dataset, operation, t_s
                 assert cb[1] == d2n(datetime(t_end.year+1, 1, 1))
 
 
+@mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
     ('gcm', 'gcm', 'std', t_start(1965), t_end(1970)),
     ('downscaled_tasmax', 'downscaled_tasmax', 'mean', t_start(1961), t_end(1990)),
@@ -505,6 +512,12 @@ def test_resolution_warning(period, outdir, tiny_dataset):
             convert_longitudes=True, output_resolutions={'monthly'}
         )
 
+    def contains_warning(record):
+        for warning in record:
+            if "None of the selected output resolutions" in str(warning.message):
+                return True
+
+        return False
+
     assert climo_files == []
-    assert len(record) == 1
-    assert "None of the selected output resolutions" in str(record[0].message)
+    assert contains_warning(record)
