@@ -512,12 +512,12 @@ def test_resolution_warning(period, outdir, tiny_dataset):
             convert_longitudes=True, output_resolutions={'monthly'}
         )
 
-    def check_warnings(record):
+    def contains_warning(record):
         for warning in record:
             if "None of the selected output resolutions" in str(warning.message):
                 return True
-                
+
         return False
 
     assert climo_files == []
-    assert check_warnings(record)
+    assert contains_warning(record)
