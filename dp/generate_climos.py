@@ -49,6 +49,7 @@ def has_climo_periods(input_file, climo):
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
         logger.info(f"{input_file.filepath()} has no variable 'climo_periods'")
+        sys.exit()
     return periods
 
 
