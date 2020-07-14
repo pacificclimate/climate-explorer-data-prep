@@ -91,13 +91,17 @@ def generate_climos(
     filepath,
     outdir,
     operation,
-    **kwargs,
+    climo=standard_climo_periods().keys(),
+    convert_longitudes=True,
+    split_vars=True,
+    split_intervals=True,
+    resolutions={"yearly", "seasonal", "monthly"},
 ):
     '''
     This function runs general generate_climos operation. The main purpose of this function
     is to call create_climo_files.
     '''
-    input_file, periods = input_check(filepath, kwargs["climo"])
+    input_file, periods = input_check(filepath, climo)
 
     for period in periods:
         t_range = input_file.climo_periods[period]
@@ -107,7 +111,10 @@ def generate_climos(
             input_file,
             operation,
             *t_range,
-            kwargs,
+            convert_longitudes=convert_longitudes,
+            split_vars=split_vars,
+            split_intervals=split_intervals,
+            output_resolutions=resolutions,
         )
 
 
@@ -118,7 +125,7 @@ def create_climo_files(
     operation,
     t_start,
     t_end,
-    convert_longitudes=True,
+    convert_longitudes,
     split_vars=True,
     split_intervals=True,
     output_resolutions={"yearly", "seasonal", "monthly"},
