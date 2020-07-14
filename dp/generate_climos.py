@@ -54,13 +54,13 @@ def input_check(filepath, climo):
         input_file = CFDataset(filepath)
     except OSError as e:
         logger.info("{}: {}".format(e.__class__.__name__, e))
-        sys.exit()
+        return
 
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
-        logger.info(f"{input_file.filepath()} has no 'climo_periods' found")
-        sys.exit()
+        logger.critical(f"{input_file.filepath()} has no 'climo_periods' found")
+        return
 
     return input_file, periods
 
