@@ -39,7 +39,7 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def has_climo_periods(input_file, climo):
+def get_climo_files(input_file, climo):
     '''
     This function checks if the given input NetCDF dataset has a variable "climo_periods".
     generate_climos requires the input dataset to have the variable, thus this function will
@@ -53,7 +53,7 @@ def has_climo_periods(input_file, climo):
     return periods
 
 
-def is_NetCDF(filepath):
+def get_cfdataset(filepath):
     '''
     This function checks if the given input file path is a vaild NetCDF file. It returns
     NetCDF dataset of the input file. Ohterwise, it halts the program.
