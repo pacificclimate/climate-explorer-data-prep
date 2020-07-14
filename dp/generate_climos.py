@@ -39,30 +39,30 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def get_climo_files(input_file, climo):
+def input_check(filepath, climo):
     '''
-    This function checks if the given input NetCDF dataset has a set of standard climo
-    periods by using climo_periods property. If no standard climo period is found, it
-    halts the program.
+    This function runs general checks on the given input arguments filepath and climo.
+    First, it checks if the given input file path is a vaild NetCDF file. It returns
+    NetCDF dataset of the input file. Ohterwise, it halts the program. Next, it checks
+    if the input NetCDF dataset has a set of standard climo periods by using climo_periods
+    property. It returns the periods if found, outherwise it halts the program.
     '''
+    logger.info("")
+    logger.info("Processing: {}".format(filepath))
+
+    try:
+        input_file = CFDataset(filepath)
+    except Exception as e:
+        logger.info("{}: {}".format(e.__class__.__name__, e))
+        sys.exit()
+
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
         logger.info(f"{input_file.filepath()} has no variable 'climo_periods'")
         sys.exit()
-    return periods
 
-
-def get_cfdataset(filepath):
-    '''
-    This function checks if the given input file path is a vaild NetCDF file. It returns
-    NetCDF dataset of the input file. Ohterwise, it halts the program.
-    '''
-    try:
-        return CFDataset(filepath)
-    except Exception as e:
-        logger.info("{}: {}".format(e.__class__.__name__, e))
-        sys.exit()
+    return input_file, periods
 
 
 def dry_run_handler(filepath, climo):
@@ -71,10 +71,7 @@ def dry_run_handler(filepath, climo):
     is to check variables and attrbutes to be used for generate_climos. dry-run will not 
     produce any output files.
     '''
-    logger.info("")
-    logger.info("File: {}".format(filepath))
-    input_file = get_cfdataset(filepath)
-    get_climo_files(input_file, climo)
+    input_file, periods = input_check(filepath, climo)
 
     for attr in ['project', 'institution', 'model', 'emissions', 'run']:
         try:
@@ -100,10 +97,7 @@ def generate_climos(
     This function runs general generate_climos operation. The main purpose of this function
     is to call create_climo_files.
     '''
-    logger.info("")
-    logger.info("Processing: {}".format(filepath))
-    input_file = get_cfdataset(filepath)
-    periods =  get_climo_files(input_file, kwargs["climo"])
+    input_file, periods = input_check(filepath, kwargs["climo"])
 
     for period in periods:
         t_range = input_file.climo_periods[period]
