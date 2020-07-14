@@ -8,14 +8,18 @@ def get_dataset(filename):
     return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(filename))
 
 
+def get_filepath(file_key):
+    return resource_filename(__name__, 'data/tiny_{}.nc').format(file_key)
+
+
 @fixture
 def tiny_filepath(request):
-    return resource_filename(__name__, 'data/tiny_{}.nc').format(request.param)
+    return get_filepath(request.param)
 
 
 @fixture
 def tiny_dataset(request):
-    return CFDataset(resource_filename(__name__, 'data/tiny_{}.nc').format(request.param))
+    return CFDataset(get_filepath(request.param))
 
 
 @fixture(scope='function')
