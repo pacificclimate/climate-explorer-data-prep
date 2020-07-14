@@ -52,7 +52,7 @@ def input_check(filepath, climo):
 
     try:
         input_file = CFDataset(filepath)
-    except Exception as e:
+    except OSError as e:
         logger.info("{}: {}".format(e.__class__.__name__, e))
         sys.exit()
 
