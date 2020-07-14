@@ -126,9 +126,9 @@ def create_climo_files(
     t_start,
     t_end,
     convert_longitudes,
-    split_vars=True,
-    split_intervals=True,
-    output_resolutions={"yearly", "seasonal", "monthly"},
+    split_vars,
+    split_intervals,
+    output_resolutions,
 ):
     """Generate climatological files from an input file and a selected time range.
 
