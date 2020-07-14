@@ -41,9 +41,9 @@ cdo = Cdo()
 
 def get_climo_files(input_file, climo):
     '''
-    This function checks if the given input NetCDF dataset has a variable "climo_periods".
-    generate_climos requires the input dataset to have the variable, thus this function will
-    warn if there is no such variable.
+    This function checks if the given input NetCDF dataset has a set of standard climo
+    periods by using climo_periods property. If no standard climo period is found, it
+    halts the program.
     '''
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
@@ -69,12 +69,12 @@ def dry_run_handler(filepath, climo):
     '''
     This function handles dry-run operation of generate_climos. The purpose of this function
     is to check variables and attrbutes to be used for generate_climos. dry-run will not 
-    produca any output files.
+    produce any output files.
     '''
     logger.info("")
     logger.info("File: {}".format(filepath))
-    input_file = is_NetCDF(filepath)
-    has_climo_periods(input_file, climo)
+    input_file = get_cfdataset(filepath)
+    get_climo_files(input_file, climo)
 
     for attr in ['project', 'institution', 'model', 'emissions', 'run']:
         try:
@@ -102,8 +102,8 @@ def generate_climos(
     '''
     logger.info("")
     logger.info("Processing: {}".format(filepath))
-    input_file = is_NetCDF(filepath)
-    periods =  has_climo_periods(input_file, kwargs["climo"])
+    input_file = get_cfdataset(filepath)
+    periods =  get_climo_files(input_file, kwargs["climo"])
 
     for period in periods:
         t_range = input_file.climo_periods[period]
