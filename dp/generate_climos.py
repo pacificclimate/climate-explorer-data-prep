@@ -59,7 +59,7 @@ def input_check(filepath, climo):
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
-        logger.info(f"{input_file.filepath()} has no variable 'climo_periods'")
+        logger.info(f"{input_file.filepath()} has no 'climo_periods' found")
         sys.exit()
 
     return input_file, periods
@@ -107,10 +107,7 @@ def generate_climos(
             input_file,
             operation,
             *t_range,
-            convert_longitudes=kwargs["convert_longitudes"],
-            split_vars=kwargs["split_vars"],
-            split_intervals=kwargs["split_intervals"],
-            output_resolutions=kwargs["resolutions"]
+            kwargs,
         )
 
 

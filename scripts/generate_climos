@@ -24,7 +24,7 @@ def main(args):
             convert_longitudes=args.convert_longitudes,
             split_vars=args.split_vars,
             split_intervals=args.split_intervals,
-            resolutions=args.resolutions,
+            output_resolutions=args.resolutions,
         )
 
 
