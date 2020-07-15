@@ -7,6 +7,9 @@ that they use to determine their behaviour, i.e. what input file to return or pr
 
 The key indirected fixtures are:
 
+    tiny_filepath
+        param: (str) selects the input file to be processed by generate_climos
+        returns: (str) input file path to be processed by generate_climos
     tiny_dataset
         param: (str) selects the input file to be processed by create_climo_files
         returns: (nchelpers.CFDataset) input file to be processed by create_climo_files
@@ -21,11 +24,13 @@ from datetime import datetime
 from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
 from pytest import mark, warns
+from pytest_mock import mocker
+from unittest.mock import ANY
 
 from nchelpers import CFDataset
 
 from dp.units_helpers import Unit
-from dp.generate_climos import create_climo_files
+from dp.generate_climos import generate_climos, create_climo_files
 
 
 # Helper functions
@@ -53,8 +58,52 @@ def basename_components(filepath):
     f = next(i for i, piece in enumerate(pieces) if piece in frequency_options)
     return ['_'.join(pieces[:f])] + pieces[f:]
 
-
 # Tests
+
+@mark.parametrize('tiny_filepath, operation', [
+    ('downscaled_tasmax', 'std'),
+    ('downscaled_pr', 'mean'),
+    ('gdd_seasonal', 'std'),
+    ('tr_annual', 'mean'),
+], indirect=['tiny_filepath'])
+@mark.parametrize('convert_longitudes, split_vars, split_intervals, resolutions',[
+        (True, True, True, "yearly"), 
+        (False, False, False, "seasonal"),
+    ]
+)
+def test_create_climo_files_call(
+    mocker, 
+    outdir, 
+    tiny_filepath, 
+    operation, 
+    convert_longitudes,
+    split_vars,
+    split_intervals,
+    resolutions,
+):
+    mock_ccf = mocker.patch("dp.generate_climos.create_climo_files")
+    generate_climos(
+        tiny_filepath, 
+        outdir, 
+        operation, 
+        convert_longitudes=convert_longitudes,
+        split_vars=split_vars,
+        split_intervals=split_intervals,
+        resolutions=resolutions,
+    )
+    mock_ccf.assert_called_with(
+        ANY,
+        outdir,
+        ANY,
+        operation,
+        ANY,
+        ANY,
+        convert_longitudes=convert_longitudes,
+        split_vars=split_vars,
+        split_intervals=split_intervals,
+        output_resolutions=resolutions,
+    )
+
 
 @mark.slow
 @mark.parametrize('period, tiny_dataset, operation, t_start, t_end', [
@@ -79,8 +128,11 @@ def test_existence(period, outdir, tiny_dataset, operation, t_start, t_end, spli
     """Test that the expected number of files was created and that the filenames returned by
     create_climo_files are those actually created.
     """
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=split_vars,
+                                     split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     num_vars = len(tiny_dataset.dependent_varnames())
     num_files = 1
     num_intervals = {"daily": 3, "monthly": 3, "seasonal": 2, "yearly": 1}[tiny_dataset.time_resolution]
@@ -117,8 +169,11 @@ def test_filenames(period, outdir, tiny_dataset, operation, t_start, t_end, spli
     Testing all the components of the filenames would be a lot of work and would duplicate unit tests for
     the filename generator in nchelpers.
     """
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True, 
+                                     split_vars=split_vars,
+                                     split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     if split_vars:
         varnames = set(tiny_dataset.dependent_varnames())
     else:
@@ -154,8 +209,11 @@ def test_filenames(period, outdir, tiny_dataset, operation, t_start, t_end, spli
 ])
 def test_climo_metadata(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the correct climo-specific metadata has been added/updated."""
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=split_vars, 
+                                     split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     frequencies = set()
 
     def history_items(hist_str):
@@ -241,8 +299,9 @@ def test_variable_aggregation(period, outdir, tiny_dataset, comparison, t_start,
         "lessermax": lambda a, b: a.max() < b.max()
         }[comparison]
     climo_files = create_climo_files(period, outdir, tiny_dataset, "mean",
-                                     t_start, t_end, split_vars=False,
-                                     split_intervals=True)
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=False, split_intervals=True,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     for cf in climo_files:
         for var in tiny_dataset.dependent_varnames():
             invar = tiny_dataset.variables[var][:]
@@ -267,8 +326,9 @@ def test_duration_variable_resolutions(period, outdir, tiny_dataset, operation, 
     consecutive days something happens) cannot be aggregated into coarser
     time values. Test that output resolution matches input resolution."""
     climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
-                                     t_start, t_end, split_vars=False,
-                                     split_intervals=False)
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=False, split_intervals=False,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     for cf in climo_files:
         with CFDataset(cf) as output:
             assert tiny_dataset.time_resolution == output.time_resolution
@@ -293,8 +353,10 @@ def test_pr_units_conversion(period, outdir, tiny_dataset, operation, t_start, t
     Test for unpacked file is pretty elementary: check pr units.
     Test for packed checks that packing params are modified correctly.
     """
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=split_vars, split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
 
     assert var in tiny_dataset.dependent_varnames()
     input_pr_var = tiny_dataset.variables[var]
@@ -334,8 +396,10 @@ def test_pr_units_conversion(period, outdir, tiny_dataset, operation, t_start, t
 ])
 def test_dependent_variables(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the output files contain the expected dependent variables"""
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=split_vars, split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     dependent_varnames_in_cfs = set()
     for fp in climo_files:
         with CFDataset(fp) as cf:
@@ -364,8 +428,10 @@ def test_dependent_variables(period, outdir, tiny_dataset, operation, t_start, t
 ])
 def test_time_and_climo_bounds_vars(period, outdir, tiny_dataset, operation, t_start, t_end, split_vars, split_intervals):
     """Test that the climo output files contain the expected time values and climo bounds. """
-    climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
-                                     split_vars=split_vars, split_intervals=split_intervals)
+    climo_files = create_climo_files(period, outdir, tiny_dataset, operation,
+                                     t_start, t_end, convert_longitudes=True,
+                                     split_vars=split_vars, split_intervals=split_intervals,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
 
     for fp in climo_files:
         with CFDataset(fp) as cf:
@@ -453,7 +519,8 @@ def test_convert_longitudes(period, outdir, tiny_dataset, operation, t_start, t_
     """Test that longitude conversion is performed correctly."""
     climo_files = create_climo_files(period, outdir, tiny_dataset, operation, t_start, t_end,
                                      split_vars=split_vars, split_intervals=split_intervals,
-                                     convert_longitudes=convert_longitudes)
+                                     convert_longitudes=convert_longitudes,
+                                     output_resolutions={"yearly", "seasonal", "monthly"})
     input_lon_var = tiny_dataset.lon_var[:]
     for fp in climo_files:
         with CFDataset(fp) as output_file:

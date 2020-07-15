@@ -17,7 +17,7 @@ from netCDF4 import date2num
 from dateutil.relativedelta import relativedelta
 from enum import Enum
 
-from nchelpers import CFDataset
+from nchelpers import CFDataset, standard_climo_periods
 from nchelpers.date_utils import d2s
 
 from dp.argparse_helpers import strtobool, log_level_choices
@@ -39,6 +39,89 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
+def input_check(filepath, climo):
+    '''
+    This function runs general checks on the given input arguments filepath and climo.
+    There are 2 checking processes:
+
+        1. checks if the given input file path is a vaild NetCDF file
+        2. checks if the input NetCDF dataset has a set of standard climo periods by
+           using climo_periods property
+
+    The function returns CFDataset and list.
+    If any of the checks are not passed, the function returns None and empty list.
+    '''
+    logger.info("")
+    logger.info("Processing: {}".format(filepath))
+
+    try:
+        input_file = CFDataset(filepath)
+    except OSError as e:
+        logger.critical("{}: {}".format(e.__class__.__name__, e))
+        return None, []
+
+    periods = input_file.climo_periods.keys() & climo
+    logger.info("climo_periods: {}".format(periods))
+    if len(periods) == 0:
+        logger.critical(f"{input_file.filepath()} contains no standard climatological periods")
+        return None, []
+
+    return input_file, periods
+
+
+def dry_run_handler(filepath, climo):
+    '''
+    This function handles dry-run operation of generate_climos. The purpose of this function
+    is to check variables and attrbutes to be used for generate_climos. dry-run will not 
+    produce any output files.
+    '''
+    input_file, periods = input_check(filepath, climo)
+
+    for attr in ['project', 'institution', 'model', 'emissions', 'run']:
+        try:
+            logger.info(
+                "{}: {}".format(attr, getattr(input_file.metadata, attr))
+            )
+        except Exception as e:
+            logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
+    logger.info(
+        "dependent_varnames: {}".format(input_file.dependent_varnames())
+    )
+    for attr in ['time_resolution', 'is_multi_year_mean']:
+        logger.info("{}: {}".format(attr, getattr(input_file, attr)))
+
+
+def generate_climos(
+    filepath,
+    outdir,
+    operation,
+    climo=standard_climo_periods().keys(),
+    convert_longitudes=True,
+    split_vars=True,
+    split_intervals=True,
+    resolutions={"yearly", "seasonal", "monthly"},
+):
+    '''
+    This function runs general generate_climos operation. The main purpose of this function
+    is to call create_climo_files.
+    '''
+    input_file, periods = input_check(filepath, climo)
+
+    for period in periods:
+        t_range = input_file.climo_periods[period]
+        create_climo_files(
+            period,
+            outdir,
+            input_file,
+            operation,
+            *t_range,
+            convert_longitudes=convert_longitudes,
+            split_vars=split_vars,
+            split_intervals=split_intervals,
+            output_resolutions=resolutions,
+        )
+
+
 def create_climo_files(
     climo_period,
     outdir,
@@ -46,10 +129,10 @@ def create_climo_files(
     operation,
     t_start,
     t_end,
-    convert_longitudes=True,
-    split_vars=True,
-    split_intervals=True,
-    output_resolutions={"yearly", "seasonal", "monthly"},
+    convert_longitudes,
+    split_vars,
+    split_intervals,
+    output_resolutions,
 ):
     """Generate climatological files from an input file and a selected time range.
 
@@ -104,10 +187,10 @@ def create_climo_files(
     output file name will be misleading.
 
     """
-    # args used for command line reconstruction for history attribute 
+    # args used for command line reconstruction for history attribute
     # when no stdin argument is given
     args = {
-        "" : input_file.filepath(),
+        "": input_file.filepath(),
         "-c": climo_period,
         "-o": outdir,
         "-p": operation,
@@ -243,7 +326,7 @@ def create_climo_files(
 
     # Update generate_climos history attribute
     temporal_subset = update_generate_climos_history(
-        args, temporal_subset, t_start_generate_climos, position = 1
+        args, temporal_subset, t_start_generate_climos, position=1
     )
 
     # Form climatological means/standard deviations over dependent variables
@@ -754,7 +837,7 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
 
     """
     # command line input through terminal
-    if(len(sys.argv) > 1):
+    if len(sys.argv) > 1:
         arguments_list = sys.argv[1:]
     # command line input not given
     else:
@@ -764,7 +847,7 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
 
     with CFDataset(netCDF_file, "r+") as cf:
         history = cf.history
-    
+
         # update_generate_climos_history for the start has to be called after the first or latter cdo command
         # update_generate_climos_history for the end has to be called after the last cdo command
         if position != 0:
