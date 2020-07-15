@@ -42,10 +42,14 @@ cdo = Cdo()
 def input_check(filepath, climo):
     '''
     This function runs general checks on the given input arguments filepath and climo.
-    First, it checks if the given input file path is a vaild NetCDF file. It returns
-    NetCDF dataset of the input file. Ohterwise, it halts the program. Next, it checks
-    if the input NetCDF dataset has a set of standard climo periods by using climo_periods
-    property. It returns the periods if found, outherwise it halts the program.
+    There are 2 checking processes:
+
+        1. checks if the given input file path is a vaild NetCDF file
+        2. checks if the input NetCDF dataset has a set of standard climo periods by
+           using climo_periods property
+
+    The function returns CFDataset and list.
+    If any of the checks are not passed, the function returns None and empty list.
     '''
     logger.info("")
     logger.info("Processing: {}".format(filepath))
@@ -53,14 +57,14 @@ def input_check(filepath, climo):
     try:
         input_file = CFDataset(filepath)
     except OSError as e:
-        logger.info("{}: {}".format(e.__class__.__name__, e))
-        return
+        logger.critical("{}: {}".format(e.__class__.__name__, e))
+        return None, []
 
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
-        logger.critical(f"{input_file.filepath()} has no 'climo_periods' found")
-        return
+        logger.critical(f"{input_file.filepath()} contains no standard climatological periods")
+        return None, []
 
     return input_file, periods
 
