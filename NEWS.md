@@ -1,5 +1,13 @@
 # News / Release Notes
 
+## 0.8.4
+*2020 Jul 15*
+
+* Bugfix in generate_climos script
+* Add custom functions `dry_run_hnadler` to handle `generate_climos`'s dry_run
+* Add custom functions `generate_climos` to handle `generate_climos`'s general run
+* Add full CI test with actions
+
 ## 0.8.3
 *2020 Jun 23*
 
