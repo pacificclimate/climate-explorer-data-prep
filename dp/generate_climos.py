@@ -39,8 +39,8 @@ logger.setLevel(logging.DEBUG)  # For testing, overridden by -l when run as a sc
 cdo = Cdo()
 
 
-def input_check(filepath, climo):
-    '''
+def input_check(filepath, climo, outputer=logger.info):
+    """
     This function runs general checks on the given input arguments filepath and climo.
     There are 2 checking processes:
 
@@ -50,9 +50,8 @@ def input_check(filepath, climo):
 
     The function returns CFDataset and list.
     If any of the checks are not passed, the function returns None and empty list.
-    '''
-    logger.info("")
-    logger.info("Processing: {}".format(filepath))
+    """
+    outputer("File: {}".format(filepath))
 
     try:
         input_file = CFDataset(filepath)
@@ -61,34 +60,48 @@ def input_check(filepath, climo):
         return None, []
 
     periods = input_file.climo_periods.keys() & climo
-    logger.info("climo_periods: {}".format(periods))
+    outputer("climo_periods: {}".format(periods))
     if len(periods) == 0:
-        logger.critical(f"{input_file.filepath()} contains no standard climatological periods")
+        logger.critical(
+            f"{input_file.filepath()} contains no standard climatological periods"
+        )
         return None, []
 
     return input_file, periods
 
 
-def dry_run_handler(filepath, climo):
-    '''
+def dry_run_handler(filepath, climo, outpath=None):
+    """
     This function handles dry-run operation of generate_climos. The purpose of this function
-    is to check variables and attrbutes to be used for generate_climos. dry-run will not 
-    produce any output files.
-    '''
-    input_file, periods = input_check(filepath, climo)
+    is to check variables and attrbutes to be used for generate_climos. 
 
-    for attr in ['project', 'institution', 'model', 'emissions', 'run']:
+        * dry-run will not produce any NetCDF output files.
+        * dry-run information will be logged out to an output .txt file if outpath is given
+        * Otherwise, it will be logged out to terminal
+    """
+    if outpath:  # Used for wps process in thunderbird
+        output_items = []
+        outputer = output_items.append
+    else:
+        outputer = logger.info
+
+    outputer("DRY_RUN")
+
+    input_file, periods = input_check(filepath, climo, outputer)
+
+    for attr in ["project", "institution", "model", "emissions", "run"]:
         try:
-            logger.info(
-                "{}: {}".format(attr, getattr(input_file.metadata, attr))
-            )
+            outputer("{}: {}".format(attr, getattr(input_file.metadata, attr)))
         except Exception as e:
-            logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
-    logger.info(
-        "dependent_varnames: {}".format(input_file.dependent_varnames())
-    )
-    for attr in ['time_resolution', 'is_multi_year_mean']:
-        logger.info("{}: {}".format(attr, getattr(input_file, attr)))
+            outputer("{}: {}: {}".format(attr, e.__class__.__name__, e))
+    outputer("dependent_varnames: {}".format(input_file.dependent_varnames()))
+    for attr in ["time_resolution", "is_multi_year_mean"]:
+        outputer("{}: {}".format(attr, getattr(input_file, attr)))
+
+    if outpath:
+        with open(outpath, "w") as f:
+            for line in output_items:
+                f.write("{}\n".format(line))
 
 
 def generate_climos(
@@ -101,10 +114,10 @@ def generate_climos(
     split_intervals=True,
     resolutions={"yearly", "seasonal", "monthly"},
 ):
-    '''
+    """
     This function runs general generate_climos operation. The main purpose of this function
     is to call create_climo_files.
-    '''
+    """
     input_file, periods = input_check(filepath, climo)
 
     for period in periods:

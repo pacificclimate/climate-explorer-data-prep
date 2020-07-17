@@ -1,6 +1,7 @@
 #!python
 from argparse import ArgumentParser
 import logging
+import os
 import sys
 
 from nchelpers import CFDataset, standard_climo_periods
@@ -10,9 +11,14 @@ from dp.generate_climos import logger, generate_climos, dry_run_handler
 
 def main(args):
     if args.dry_run:
-        logger.info("DRY RUN")
         for filepath in args.filepaths:
-            dry_run_handler(filepath, args.climo)
+            filename = filepath.split("/")[-1][:-3]
+            outpath = (
+                os.path.join(args.outdir, filename + "_dry_run.txt")
+                if args.dry_output_to_file
+                else None
+            )
+            dry_run_handler(filepath, args.climo, outpath)
         sys.exit(0)
 
     for filepath in args.filepaths:
@@ -60,6 +66,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true")
     parser.add_argument(
+        "-f",
+        "--dry-output-to-file",
+        dest="dry_output_to_file",
+        help="Outputs dry run info to a file",
+    )
+    parser.add_argument(
         "-g",
         "--convert-longitudes",
         type=strtobool,
@@ -89,7 +101,11 @@ if __name__ == "__main__":
         choices=["mean", "std"],
     )
     parser.set_defaults(
-        dry_run=False, convert_longitudes=True, split_vars=True, split_intervals=True
+        dry_run=False,
+        dry_output_to_file=False,
+        convert_longitudes=True,
+        split_vars=True,
+        split_intervals=True,
     )
     args = parser.parse_args()
     if not args.climo:
