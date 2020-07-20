@@ -51,7 +51,7 @@ def input_check(filepath, climo, outputer=logger.info):
     The function returns CFDataset and list.
     If any of the checks are not passed, the function returns None and empty list.
     """
-    outputer("File: {}".format(filepath))
+    outputer(f"File: {filepath}")
 
     try:
         input_file = CFDataset(filepath)
@@ -60,7 +60,7 @@ def input_check(filepath, climo, outputer=logger.info):
         return None, []
 
     periods = input_file.climo_periods.keys() & climo
-    outputer("climo_periods: {}".format(periods))
+    outputer(f"climo_periods: {periods}")
     if len(periods) == 0:
         logger.critical(
             f"{input_file.filepath()} contains no standard climatological periods"
@@ -91,17 +91,17 @@ def dry_run_handler(filepath, climo, outpath=None):
 
     for attr in ["project", "institution", "model", "emissions", "run"]:
         try:
-            outputer("{}: {}".format(attr, getattr(input_file.metadata, attr)))
+            outputer(f"{attr}: {getattr(input_file.metadata, attr)}")
         except Exception as e:
-            outputer("{}: {}: {}".format(attr, e.__class__.__name__, e))
+            outputer(f"{attr}: {e.__class__.__name__}: {e}")
     outputer("dependent_varnames: {}".format(input_file.dependent_varnames()))
     for attr in ["time_resolution", "is_multi_year_mean"]:
-        outputer("{}: {}".format(attr, getattr(input_file, attr)))
+        outputer(f"{attr}: {getattr(input_file, attr)}")
 
     if outpath:
         with open(outpath, "w") as f:
             for line in output_items:
-                f.write("{}\n".format(line))
+                f.write(f"{line}\n")
 
 
 def generate_climos(
