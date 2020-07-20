@@ -67,8 +67,9 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true")
     parser.add_argument(
         "-f",
-        "--dry-output-to-file",
+        "--dry-file",
         dest="dry_output_to_file",
+        action="store_true",
         help="Outputs dry run info to a file",
     )
     parser.add_argument(
@@ -76,6 +77,7 @@ if __name__ == "__main__":
         "--convert-longitudes",
         type=strtobool,
         dest="convert_longitudes",
+        default=True,
         help="Transform longitude range from [0, 360) to [-180, 180)",
     )
     parser.add_argument(
@@ -83,6 +85,7 @@ if __name__ == "__main__":
         "--split-vars",
         type=strtobool,
         dest="split_vars",
+        default=True,
         help="Generate a separate file for each dependent variable in the file",
     )
     parser.add_argument(
@@ -90,6 +93,7 @@ if __name__ == "__main__":
         "--split-intervals",
         type=strtobool,
         dest="split_intervals",
+        default=True,
         help="Generate a separate file for each climatological period",
     )
     parser.add_argument("-o", "--outdir", required=True, help="Output folder")
@@ -100,17 +104,13 @@ if __name__ == "__main__":
         help="Data operation for the file",
         choices=["mean", "std"],
     )
-    parser.set_defaults(
-        dry_run=False,
-        dry_output_to_file=False,
-        convert_longitudes=True,
-        split_vars=True,
-        split_intervals=True,
-    )
+
     args = parser.parse_args()
+
     if not args.climo:
         args.climo = standard_climo_periods().keys()
     if not args.resolutions:
         args.resolutions = ["yearly", "seasonal", "monthly"]
+
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
