@@ -94,7 +94,7 @@ def dry_run_handler(filepath, climo, outpath=None):
             outputer(f"{attr}: {getattr(input_file.metadata, attr)}")
         except Exception as e:
             outputer(f"{attr}: {e.__class__.__name__}: {e}")
-    outputer("dependent_varnames: {}".format(input_file.dependent_varnames()))
+    outputer(f"dependent_varnames: {input_file.dependent_varnames()}")
     for attr in ["time_resolution", "is_multi_year_mean"]:
         outputer(f"{attr}: {getattr(input_file, attr)}")
 
