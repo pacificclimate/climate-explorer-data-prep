@@ -398,8 +398,8 @@ To generate a file containing the `snowfall_flux` from input files of precipiati
 #### Usage:
 
 ```bash
-# Metadata check
-generate_prsn --metadata-check -p prec_file -n tasmin_file -x tasmax_file -o outdir
+# Dry run
+generate_prsn --dry-run -p prec_file -n tasmin_file -x tasmax_file -o outdir
 
 # File generation
 generate_prsn -p prec_file -n tasmin_file -x tasmax_file -o outdir

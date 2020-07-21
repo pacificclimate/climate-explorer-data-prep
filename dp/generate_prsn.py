@@ -19,38 +19,28 @@ Q_ = ureg.Quantity
 logger = logging.getLogger(__name__)
 
 
-def dry_run(filepaths, outpath=None):
+def dry_run(filepaths):
     '''Perform metadata checks on the input files
 
        Parameters:
             filepaths (dict): Dictionary containing the three filepaths
-            outpath (str): Optional path to text file that will contain metadata info
     '''
-    if outpath: # Used for wps process in thunderbird
-        output_items = []
-        outputer = output_items.append
-    else:
-        outputer = logger.info
-
-    outputer('Dry Run')
+    logger.info('Dry Run')
     for filepath in filepaths.values():
-        outputer('File: {}'.format(filepath))
+        logger.info('')
+        logger.info(f'File: {filepath}')
         try:
             dataset = CFDataset(filepath)
         except Exception as e:
-            outputer('{}: {}'.format(e.__class__.__name__, e))
+            logger.exception(f'{e.__class__.__name__}: {e}')
 
         for attr in 'project model institute experiment ensemble_member'.split():
             try:
-                outputer('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+                logger.info(f'{attr}: {getattr(dataset.metadata, attr)}')
             except Exception as e:
-                outputer('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-        outputer('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+                logger.info(f'{attr}: {e.__class__.__name__}: {e}')
+        logger.info(f'dependent_varnames: {dataset.dependent_varnames()}')
 
-    if outpath:
-        with open(outpath, 'w') as f:
-            for line in output_items:
-                f.write('{}\n'.format(line))
 
 def unique_shape(arrays):
     '''Ensure each array in dict is the same shape'''
