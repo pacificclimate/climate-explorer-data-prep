@@ -1,11 +1,16 @@
 # News / Release Notes
 
+## 0.8.5
+*2020 Jul 21*
+
+* Modify `generate_prsn` not to produce redundant dry_run output file
+
 ## 0.8.4
 *2020 Jul 15*
 
 * Bugfix in generate_climos script
-* Add custom functions `dry_run_hnadler` to handle `generate_climos`'s dry_run
-* Add custom functions `generate_climos` to handle `generate_climos`'s general run
+* Add custom function `dry_run_handler` to handle `generate_climos`'s dry_run
+* Add custom function `generate_climos` to handle `generate_climos`'s general run
 * Add full CI test with actions
 
 ## 0.8.3
