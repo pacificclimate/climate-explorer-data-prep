@@ -28,18 +28,18 @@ def dry_run(filepaths):
     logger.info('Dry Run')
     for filepath in filepaths.values():
         logger.info('')
-        logger.info('File: {}'.format(filepath))
+        logger.info(f'File: {filepath}')
         try:
             dataset = CFDataset(filepath)
         except Exception as e:
-            logger.exception('{}: {}'.format(e.__class__.__name__, e))
+            logger.exception(f'{e.__class__.__name__}: {e}')
 
         for attr in 'project model institute experiment ensemble_member'.split():
             try:
-                logger.info('{}: {}'.format(attr, getattr(dataset.metadata, attr)))
+                logger.info(f'{attr}: {getattr(dataset.metadata, attr)}')
             except Exception as e:
-                logger.info('{}: {}: {}'.format(attr, e.__class__.__name__, e))
-        logger.info('dependent_varnames: {}'.format(dataset.dependent_varnames()))
+                logger.info(f'{attr}: {e.__class__.__name__}: {e}')
+        logger.info(f'dependent_varnames: {dataset.dependent_varnames()}')
 
 
 def unique_shape(arrays):
