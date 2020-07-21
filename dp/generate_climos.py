@@ -63,7 +63,7 @@ def input_check(filepath, climo, outputer=logger.info):
     outputer(f"climo_periods: {periods}")
     if len(periods) == 0:
         logger.critical(
-            f"{input_file.filepath()} contains no standard climatological periods"
+            f"{input_file.filepath()} contains no standard climatological periods {climo}"
         )
         return None, []
 
