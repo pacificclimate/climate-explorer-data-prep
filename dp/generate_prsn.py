@@ -25,7 +25,7 @@ def dry_run(filepaths):
        Parameters:
             filepaths (dict): Dictionary containing the three filepaths
     '''
-    logger.inf('Dry Run')
+    logger.info('Dry Run')
     for filepath in filepaths.values():
         logger.info('')
         logger.info('File: {}'.format(filepath))
