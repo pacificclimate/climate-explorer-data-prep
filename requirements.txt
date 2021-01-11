@@ -1,5 +1,5 @@
 python-dateutil
-cdo
+cdo==1.5.3
 nchelpers==5.5.6
 pint
 PyYAML
