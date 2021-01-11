@@ -1,5 +1,10 @@
 # News / Release Notes
 
+## 0.8.6
+*2021 Jan 11*
+
+* Pin `cdo==1.5.3` library
+
 ## 0.8.5
 *2020 Jul 21*
 
