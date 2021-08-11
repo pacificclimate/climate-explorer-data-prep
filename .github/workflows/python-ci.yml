@@ -24,23 +24,18 @@ jobs:
         sudo apt-get install cdo
         pip install -U pip pipenv
 
-    - id: cache-pipenv
-      uses: actions/cache@v2
-      with:
-        path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-
-    - name: Install dependencies if changed
-      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+    - name: Install python packages
       run: |
-        pipenv install --dev
+        pipenv lock --requirements > requirements.txt
+        pipenv lock --requirements --dev >> requirements.txt
+        pip install -r requirements.txt
 
     - name: Test with pytest (full)
       if: github.ref == 'refs/heads/master'
       run: |
-        pipenv run py.test -v
+        py.test -v
     
     - name: Test with pytest (fast)
       if: github.ref != 'refs/heads/master'
       run: |
-        pipenv run py.test -m "not slow" -v
+        py.test -m "not slow" -v
