@@ -40,7 +40,7 @@ cdo = Cdo()
 
 
 def input_check(filepath, climo):
-    '''
+    """
     This function runs general checks on the given input arguments filepath and climo.
     There are 2 checking processes:
 
@@ -50,7 +50,7 @@ def input_check(filepath, climo):
 
     The function returns CFDataset and list.
     If any of the checks are not passed, the function returns None and empty list.
-    '''
+    """
     logger.info("")
     logger.info("Processing: {}".format(filepath))
 
@@ -63,31 +63,29 @@ def input_check(filepath, climo):
     periods = input_file.climo_periods.keys() & climo
     logger.info("climo_periods: {}".format(periods))
     if len(periods) == 0:
-        logger.critical(f"{input_file.filepath()} contains no standard climatological periods")
+        logger.critical(
+            f"{input_file.filepath()} contains no standard climatological periods"
+        )
         return None, []
 
     return input_file, periods
 
 
 def dry_run_handler(filepath, climo):
-    '''
+    """
     This function handles dry-run operation of generate_climos. The purpose of this function
-    is to check variables and attrbutes to be used for generate_climos. dry-run will not 
+    is to check variables and attrbutes to be used for generate_climos. dry-run will not
     produce any output files.
-    '''
+    """
     input_file, periods = input_check(filepath, climo)
 
-    for attr in ['project', 'institution', 'model', 'emissions', 'run']:
+    for attr in ["project", "institution", "model", "emissions", "run"]:
         try:
-            logger.info(
-                "{}: {}".format(attr, getattr(input_file.metadata, attr))
-            )
+            logger.info("{}: {}".format(attr, getattr(input_file.metadata, attr)))
         except Exception as e:
             logger.info("{}: {}: {}".format(attr, e.__class__.__name__, e))
-    logger.info(
-        "dependent_varnames: {}".format(input_file.dependent_varnames())
-    )
-    for attr in ['time_resolution', 'is_multi_year_mean']:
+    logger.info("dependent_varnames: {}".format(input_file.dependent_varnames()))
+    for attr in ["time_resolution", "is_multi_year_mean"]:
         logger.info("{}: {}".format(attr, getattr(input_file, attr)))
 
 
@@ -101,10 +99,10 @@ def generate_climos(
     split_intervals=True,
     resolutions={"yearly", "seasonal", "monthly"},
 ):
-    '''
+    """
     This function runs general generate_climos operation. The main purpose of this function
     is to call create_climo_files.
-    '''
+    """
     input_file, periods = input_check(filepath, climo)
 
     for period in periods:
@@ -618,7 +616,7 @@ def convert_longitude_range(climo_data):
 
 def convert_flux_var_units(input_file, climo_data):
     """If the file contains a 'pr' or 'prsn' variable, and if its units are per
-       second, convert its units to per day.
+    second, convert its units to per day.
     """
     flux_vars = [
         var for var in ["pr", "prsn"] if var in input_file.dependent_varnames()
@@ -738,7 +736,10 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
 
         # Update cell_methods to reflect the operation being done to the data
         validate_operation(operation)
-        cell_method_op = {"std": "standard_deviation", "mean": "mean",}[operation]
+        cell_method_op = {
+            "std": "standard_deviation",
+            "mean": "mean",
+        }[operation]
 
         for key in cf.variables.keys():
             try:
@@ -750,7 +751,10 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
                 continue
 
         # Update frequency attribute to reflect that this is a climo file.
-        suffix = {"std": "SD", "mean": "Mean",}[operation]
+        suffix = {
+            "std": "SD",
+            "mean": "Mean",
+        }[operation]
 
         prefix = "".join(
             abbr
@@ -782,7 +786,14 @@ def update_metadata_and_time_var(input_file, t_start, t_end, operation, climo_fi
         cf.time_var.climatology = "climatology_bnds"
         if "bnds" not in cf.dimensions:
             cf.createDimension("bnds", 2)
-        climo_bnds_var = cf.createVariable("climatology_bnds", "f4", ("time", "bnds",))
+        climo_bnds_var = cf.createVariable(
+            "climatology_bnds",
+            "f4",
+            (
+                "time",
+                "bnds",
+            ),
+        )
         climo_bnds_var.calendar = cf.time_var.calendar
         climo_bnds_var.units = cf.time_var.units
         climo_bnds_var[:] = date2num(
@@ -812,20 +823,20 @@ def update_generate_climos_history(args, netCDF_file, time_cdo_format, position=
 
     For example:
 
-    :history = 
+    :history =
         "Thu May 21 11:12:04 2020: cdo -O -seldate ..."    <--- position 0
         "Thu May 21 11:12:04: start: generate_climos ..."  <--- position 1: insert "start: genereate_climos"
         "Thu Mar 21 14:49:01 2019: cdo sellonlatbox ..."   <--- position 2
         "Thu Sep  1 14:34:03 2016: ncrcat ..."             <--- position 3
         "Thu Sep 01 14:33:15 2016: cdo -O seldate ..."     <--- position 4
-        
+
         ...
 
     or
 
-    :history = 
+    :history =
         "Thu May 21 11:12:05: end: generate_climos ..."    <--- position 0: insert "end: genereate_climos"
-        "Thu May 21 11:12:05 2020: cdo -O -replace ..."    <--- position 1 
+        "Thu May 21 11:12:05 2020: cdo -O -replace ..."    <--- position 1
         "Thu May 21 11:12:04 2020: cdo -O -timmean ..."    <--- position 2
         "Thu May 21 11:12:04 2020: cdo -O -seldate ..."    <--- position 3
         "Thu May 21 11:12:04: start: generate_climos ..."  <--- position 4

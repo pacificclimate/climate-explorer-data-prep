@@ -126,7 +126,7 @@ def create_graticule_variables(axis, source, dest):
     """
     this function adds a netCDF graticule component variable(latitude/longitude)
     inside the destination file.
-    
+
     :param axis: (str) a griticule component to be created
     :param source: (netCDF4 Dataset) source netCDF Dataset
     :param dest_file: (str) path to destination netCDF file
@@ -141,7 +141,7 @@ def create_vector_variables(direction, dest, variable):
     """
     this function adds a netCDF direction vector component variable(eastward/nothward)
     inside the destination file.
-    
+
     :param direction: (str) a direction vector component to be created
     :param dest: (str) path to destination netCDF file
     :param variable: (str) netCDF variable describing flow direction
@@ -160,7 +160,7 @@ def create_vector_variables(direction, dest, variable):
 def generate_vector_component(dir_vec, source, dest, variable):
     """
     This function converts source file's VIC model vector values to
-    destination file's Two-Grid vector values. Basically, it splits 
+    destination file's Two-Grid vector values. Basically, it splits
     off a direction into x-y(eastward-northward) coordinates.
 
     :param dir_vec: (str) a direction vector component variable to be generated

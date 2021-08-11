@@ -87,7 +87,13 @@ def test_missing_data():
 def assert_SystemExit_code(infile, outfile, variable, expected):
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.check_call(
-            ["python", "./scripts/decompose_flow_vectors", infile, outfile, variable,]
+            [
+                "python",
+                "./scripts/decompose_flow_vectors",
+                infile,
+                outfile,
+                variable,
+            ]
         )
     assert e.value.returncode == expected
 
