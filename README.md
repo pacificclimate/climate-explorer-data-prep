@@ -31,7 +31,7 @@ $ module load cdo-bin
 Python installation should be done in a virtual environment. We recommend `pipenv`:
 
 ```bash
-$ pipenv install
+$ pipenv install # Or
 $ pipenv install --dev # to include development packages
 ```
 
