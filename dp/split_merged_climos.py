@@ -8,7 +8,9 @@ from nchelpers import CFDataset
 
 
 # Set up logging
-formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', "%Y-%m-%d %H:%M:%S")
+formatter = logging.Formatter(
+    "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
@@ -24,27 +26,29 @@ def split_merged_climos(input_file, outdir):
 
     # Check that we can split this file
     if not input_file.is_multi_year_mean:
-        raise ValueError('File is not a multi-year mean')
+        raise ValueError("File is not a multi-year mean")
 
     output_filepaths = []
     start_timestep = 1
     for input_freqs, num_timesteps, output_freq in [
-        ({'msaClim'}, 12, 'mClim'),
-        ({'saClim', 'msaClim'}, 4, 'sClim'),
-        ({'saClim', 'msaClim'}, 1, 'aClim'),
+        ({"msaClim"}, 12, "mClim"),
+        ({"saClim", "msaClim"}, 4, "sClim"),
+        ({"saClim", "msaClim"}, 1, "aClim"),
     ]:
         if input_file.frequency in input_freqs:
             # The given climo interval set is in the file.
             logger.info("Splitting averaging interval '{}'".format(output_freq))
 
             # Determine what timesteps should be selected from the file
-            timesteps = list(range(start_timestep, start_timestep+num_timesteps))
+            timesteps = list(range(start_timestep, start_timestep + num_timesteps))
             start_timestep += num_timesteps
 
             # Split out those timesteps
-            temp_filepath = cdo.seltimestep(','.join(str(t) for t in timesteps), input=input_file.filepath())
+            temp_filepath = cdo.seltimestep(
+                ",".join(str(t) for t in timesteps), input=input_file.filepath()
+            )
 
-            with CFDataset(temp_filepath, mode='r+') as cf:
+            with CFDataset(temp_filepath, mode="r+") as cf:
                 # Update metadata in the split file
                 cf.frequency = output_freq
                 # Extract the final filename for this file
@@ -52,12 +56,16 @@ def split_merged_climos(input_file, outdir):
 
             # Move/copy split file to final location
             try:
-                logger.info('Output file: {}'.format(output_filepath))
+                logger.info("Output file: {}".format(output_filepath))
                 if not os.path.exists(os.path.dirname(output_filepath)):
                     os.makedirs(os.path.dirname(output_filepath))
                 shutil.move(temp_filepath, output_filepath)
             except Exception as e:
-                logger.warning('Failed to create output file. {}: {}'.format(e.__class__.__name__, e))
+                logger.warning(
+                    "Failed to create output file. {}: {}".format(
+                        e.__class__.__name__, e
+                    )
+                )
             else:
                 output_filepaths.append(output_filepath)
 

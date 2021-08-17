@@ -28,15 +28,11 @@ $ module load netcdf-bin
 $ module load cdo-bin
 ```
 
-Python installation should be done in a virtual environment. We recommend a Python3 virtual env, created and activated
-as follows:
+Python installation should be done in a virtual environment. We recommend `pipenv`:
 
 ```bash
-$ python3 -m venv venv
-$ source venv/bin/activate
-(venv) $ pip install -U pip setuptools wheel  # why are setuptools and wheel necessary?
-(venv) $ pip install -i https://pypi.pacificclimate.org/simple/ -r requirements.txt
-(venv) $ pip install .  # or pip install -e .
+$ pipenv install # Or
+$ pipenv install --dev # to include development packages
 ```
 
 This installs the scripts described below.
