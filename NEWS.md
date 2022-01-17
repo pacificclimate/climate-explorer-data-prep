@@ -1,5 +1,12 @@
 # News / Release Notes
 
+## 0.8.7
+*2022 Jan 17*
+
+* Replace `pip` with `pipenv` for Python package installation
+* Add `black` and `linter` for formatting and styling
+* Update `nchelpers` to version 5.5.8 to process CMIP6 data
+
 ## 0.8.6
 *2021 Jan 11*
 
