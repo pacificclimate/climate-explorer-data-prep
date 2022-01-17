@@ -26,8 +26,10 @@ def create_routing_file(name, numlats, numlons, routes):
 
     lats[:] = range(45, 60, int(15 / numlats))
     lons[:] = range(-125, -110, int(15 / numlons))
-    flows[:] = routes
-    wrong_flows[:] = [100, -25, 358, 14, 5, 68, -7, -128, 15]
+    flows[:] = np.reshape(routes, (numlats, numlons))
+    wrong_flows[:] = np.reshape(
+        [100, -25, 358, 14, 5, 68, -7, -128, 15], (numlats, numlons)
+    )
 
     testfile.close()
 
