@@ -1,5 +1,10 @@
 # News / Release Notes
 
+## 0.8.8
+*2022 Jan 17*
+
+* Incorporate `nchelpers` update described in version 0.8.7
+
 ## 0.8.7
 *2022 Jan 17*
 
