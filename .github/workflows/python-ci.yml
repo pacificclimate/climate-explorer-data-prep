@@ -5,10 +5,10 @@ on: push
 jobs:
   test:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -23,32 +23,21 @@ jobs:
         sudo apt-get install libhdf5-serial-dev netcdf-bin libnetcdf-dev
         sudo apt-get install cdo
 
-    - name: Install pipenv
+    - name: Install poetry
       run: |
-        pip install -U pipenv
-    
-    - id: cache-pipenv
-      uses: actions/cache@v2
-      with:
-        path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+        wget -O - https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Install dependencies if changed
-      if: steps.cache-pipenv.outputs.cache-hit != 'true' && ${{ matrix.python-version == '3.8' }}
+    - name: Install python dependencies
       run: |
-        pipenv install --deploy --dev
-    - name: Re-install dependencies if alternative python version
-      if: ${{ matrix.python-version != '3.8' }}
-      run: |
-        mv Pipfile.lock do-not-use
-        pipenv install --python ${{ matrix.python-version }} --dev
+        poetry install --with=dev
     
     - name: Test with pytest (full)
       if: github.ref == 'refs/heads/master'
       run: |
-        pipenv run py.test -m "not online" -v
+        poetry run py.test -m "not online" -v
     
     - name: Test with pytest (fast)
       if: github.ref != 'refs/heads/master'
       run: |
-        pipenv run py.test -m "not online and not slow" -v
+        poetry run py.test -m "not online and not slow" -v
