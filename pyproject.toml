@@ -33,3 +33,8 @@ generate_prsn = "dp.scripts.generate_prsn:runme"
 split_merged_climos = "dp.scripts.split_merged_climos:runme"
 update_metadata = "dp.scripts.update_metadata:runme"
 decompose_flow_vectors = "dp.scripts.decompose_flow_vectors:runme"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests that are slow (deselect with '-m \"not slow\"')",
+]
