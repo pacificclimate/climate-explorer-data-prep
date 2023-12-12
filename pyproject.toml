@@ -12,16 +12,21 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.8"
-python-dateutil = "^2.8.2"
-cdo = "^1.6.0"
+python-dateutil = "~2.8"
+cdo = "~1.6"
 Pint = "^0.21" # upgrade after python > 3.9
-PyYAML = "^6.0.1"
-nchelpers = {url = "https://pypi.pacificclimate.org/packages/nchelpers-5.5.11-py3-none-any.whl#md5=4e7ca60b82da955686791c85c08eff74"}
+PyYAML = "~6.0"
+nchelpers = {version = "^5.5.11", source = "pcic"}
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pytest-mock = "^3.12.0"
-black = "^23.11.0"
+pytest = "*"
+pytest-mock = "*"
+black = "*"
+
+[[tool.poetry.source]]
+name = "pcic"
+url = "https://pypi.pacificclimate.org/simple"
+priority = "supplemental"
 
 [build-system]
 requires = ["poetry-core"]
