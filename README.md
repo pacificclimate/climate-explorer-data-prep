@@ -26,18 +26,23 @@ _before_ installing the Python modules:
 ```bash
 $ module load netcdf-bin
 $ module load cdo-bin
+$ module load poetry
 ```
 
-Python installation should be done in a virtual environment. We recommend `pipenv`:
+Python installation should be done in a virtual environment managed by the `poetry` tool:
 
 ```bash
-$ pipenv install # Or
-$ pipenv install --dev # to include development packages
+$ poetry install # Or
+$ poetry install --with=dev # to include development packages
 ```
 
 This installs the scripts described below.
-To make their command-line invocation a little nicer, the script files lack the `.py` extension.
-They are, however, Python scripts.
+To make their command-line invocation a little nicer, the scripts  lack the `.py` extension.
+They are, however, Python code.
+
+All of the scripts below can be run with `poetry run [script_name]`,
+or simply `[script_name]` if one has already invoked a shell in which
+the project is installed (accomplished with `poetry shell`).
 
 ## Development
 
@@ -53,7 +58,7 @@ tests in Travis.
 We can and MUST, however, run the tests on our development machines. It's as simple as
 
 ```bash
-pytest
+poetry run py.test
 ```
 
 (Oh, the unintended punning!)
