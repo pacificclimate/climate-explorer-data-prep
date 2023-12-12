@@ -1,4 +1,3 @@
-#!python
 from argparse import ArgumentParser
 import logging
 import sys
@@ -28,7 +27,7 @@ def main(args):
         )
 
 
-if __name__ == "__main__":
+def runme():
     parser = ArgumentParser(description="Create climatologies from CMIP5 data")
     parser.add_argument("filepaths", nargs="*", help="Files to process")
     parser.add_argument(
@@ -98,3 +97,7 @@ if __name__ == "__main__":
         args.resolutions = ["yearly", "seasonal", "monthly"]
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
+
+
+if __name__ == "__main__":
+    runme()

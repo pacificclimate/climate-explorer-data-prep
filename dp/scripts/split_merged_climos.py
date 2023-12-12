@@ -19,7 +19,7 @@ def main(args):
             split_merged_climos(input_file, args.outdir)
 
 
-if __name__ == '__main__':
+def runme():
     parser = ArgumentParser(description='Create climatologies from CMIP5 data')
     parser.add_argument('filepaths', nargs='*', help='Files to process')
     log_level_choices = 'NOTSET DEBUG INFO WARNING ERROR CRITICAL'.split()
@@ -29,3 +29,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
+
+
+if __name__ == '__main__':
+    runme()

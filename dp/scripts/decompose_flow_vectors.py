@@ -37,7 +37,7 @@ def main(args):
     decompose_flow_vectors(source, args.dest_file, args.variable)
 
 
-if __name__ == "__main__":
+def runme():
     parser = argparse.ArgumentParser(
         description="Process an indexed flow direction netCDF into a vectored netCDF suitable for ncWMS display"
     )
@@ -57,3 +57,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
+
+
+if __name__ == "__main__":
+    runme()

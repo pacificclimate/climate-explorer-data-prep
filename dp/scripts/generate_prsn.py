@@ -28,7 +28,7 @@ def main(args):
         generate_prsn_file(filepaths, args.chunk_size, args.outdir, args.output_file)
 
 
-if __name__ == '__main__':
+def runme():
     parser = ArgumentParser(description='Create precipitation as snow data from pr, tasmin, tasmax')
     parser.add_argument('-d', '--dry-run', dest='dry_run', action='store_true')
     parser.add_argument('-c', '--chunk-size', dest='chunk_size', type=int, default=100,
@@ -44,3 +44,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     setup_logger(args.loglevel)
     main(args)
+
+
+if __name__ == '__main__':
+    runme()

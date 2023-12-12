@@ -12,7 +12,7 @@ from dp.argparse_helpers import log_level_choices
 from dp.update_metadata import logger, main
 
 
-if __name__ == '__main__':
+def runme():
     parser = ArgumentParser(
         description='Update NetCDF file attributes based on an updates '
                     'specification file')
@@ -29,3 +29,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logger.setLevel(getattr(logging, args.loglevel))
     main(args)
+
+
+if __name__ == '__main__':
+    runme()
