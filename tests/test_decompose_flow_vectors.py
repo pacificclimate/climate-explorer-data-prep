@@ -41,7 +41,7 @@ def test_decomposition():
     create_routing_file(infile, 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9])
 
     subprocess.call(
-        ["python", "./scripts/decompose_flow_vectors", infile, outfile, "flow"]
+        ["decompose_flow_vectors", infile, outfile, "flow"]
     )
 
     output = Dataset(outfile, "r", format="NETCDF4")
@@ -71,7 +71,7 @@ def test_missing_data():
     create_routing_file(infile, 3, 3, marr)
 
     subprocess.call(
-        ["python", "./scripts/decompose_flow_vectors", infile, outfile, "flow"]
+        ["decompose_flow_vectors", infile, outfile, "flow"]
     )
 
     output = Dataset(outfile, "r", format="NetCDF4")
@@ -90,8 +90,7 @@ def assert_SystemExit_code(infile, outfile, variable, expected):
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.check_call(
             [
-                "python",
-                "./scripts/decompose_flow_vectors",
+                "decompose_flow_vectors",
                 infile,
                 outfile,
                 variable,
