@@ -40,9 +40,7 @@ def test_decomposition():
     outfile = "testoutput{}.nc".format(timestamp)
     create_routing_file(infile, 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-    subprocess.call(
-        ["decompose_flow_vectors", infile, outfile, "flow"]
-    )
+    subprocess.call(["decompose_flow_vectors", infile, outfile, "flow"])
 
     output = Dataset(outfile, "r", format="NETCDF4")
     north = output.variables["northward_flow"][:]
@@ -70,9 +68,7 @@ def test_missing_data():
     marr = ma.masked_array(arr, mask=[0, 0, 0, 1, 0, 0, 0, 0, 0])
     create_routing_file(infile, 3, 3, marr)
 
-    subprocess.call(
-        ["decompose_flow_vectors", infile, outfile, "flow"]
-    )
+    subprocess.call(["decompose_flow_vectors", infile, outfile, "flow"])
 
     output = Dataset(outfile, "r", format="NetCDF4")
     north = output.variables["northward_flow"][:]
