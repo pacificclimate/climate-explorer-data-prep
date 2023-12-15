@@ -29,7 +29,8 @@ $ module load cdo-bin
 $ module load poetry
 ```
 
-Python installation should be done in a virtual environment managed by the `poetry` tool:
+Python installation should be done in a virtual environment managed by
+the [`poetry` tool](https://python-poetry.org/docs/):
 
 ```bash
 $ poetry install # Or
