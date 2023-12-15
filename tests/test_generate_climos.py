@@ -363,19 +363,25 @@ def test_climo_metadata(
     }[operation]
 
     if split_intervals:
-        assert frequencies == {
-            "daily": {"mClim" + suffix, "sClim" + suffix, "aClim" + suffix},
-            "monthly": {"mClim" + suffix, "sClim" + suffix, "aClim" + suffix},
-            "seasonal": {"sClim" + suffix, "aClim" + suffix},
-            "yearly": {"aClim" + suffix},
-        }[tiny_dataset.time_resolution]
+        assert (
+            frequencies
+            == {
+                "daily": {"mClim" + suffix, "sClim" + suffix, "aClim" + suffix},
+                "monthly": {"mClim" + suffix, "sClim" + suffix, "aClim" + suffix},
+                "seasonal": {"sClim" + suffix, "aClim" + suffix},
+                "yearly": {"aClim" + suffix},
+            }[tiny_dataset.time_resolution]
+        )
     else:
-        assert frequencies == {
-            "daily": {"msaClim" + suffix},
-            "monthly": {"msaClim" + suffix},
-            "seasonal": {"saClim" + suffix},
-            "yearly": {"aClim" + suffix},
-        }[tiny_dataset.time_resolution]
+        assert (
+            frequencies
+            == {
+                "daily": {"msaClim" + suffix},
+                "monthly": {"msaClim" + suffix},
+                "seasonal": {"saClim" + suffix},
+                "yearly": {"aClim" + suffix},
+            }[tiny_dataset.time_resolution]
+        )
 
 
 @mark.parametrize(

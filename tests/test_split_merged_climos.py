@@ -61,21 +61,27 @@ def test_metadata_and_time(outdir, tiny_dataset):
             assert cf.is_multi_year_mean
             assert cf.frequency in {"mClim", "sClim", "aClim"}
 
-            assert cf.time_var.size == {
-                "mClim": 12,
-                "sClim": 4,
-                "aClim": 1,
-            }[cf.frequency]
+            assert (
+                cf.time_var.size
+                == {
+                    "mClim": 12,
+                    "sClim": 4,
+                    "aClim": 1,
+                }[cf.frequency]
+            )
 
             def d2n(date):
                 return date2num(date, cf.time_var.units, cf.time_var.calendar)
 
             year = tiny_dataset.time_steps["datetime"][0].year
-            assert cf.time_var[0] == {
-                "mClim": d2n(datetime(year, 1, 15)),
-                "sClim": d2n(datetime(year, 1, 16)),
-                "aClim": d2n(datetime(year, 7, 2)),
-            }[cf.frequency]
+            assert (
+                cf.time_var[0]
+                == {
+                    "mClim": d2n(datetime(year, 1, 15)),
+                    "sClim": d2n(datetime(year, 1, 16)),
+                    "aClim": d2n(datetime(year, 7, 2)),
+                }[cf.frequency]
+            )
 
 
 @mark.parametrize("tiny_dataset", datasets, indirect=["tiny_dataset"])

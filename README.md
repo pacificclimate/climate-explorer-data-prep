@@ -26,48 +26,46 @@ _before_ installing the Python modules:
 ```bash
 $ module load netcdf-bin
 $ module load cdo-bin
+$ module load poetry
 ```
 
-Python installation should be done in a virtual environment. We recommend `pipenv`:
+Python installation should be done in a virtual environment managed by
+the [`poetry` tool](https://python-poetry.org/docs/):
 
 ```bash
-$ pipenv install # Or
-$ pipenv install --dev # to include development packages
+$ poetry install # Or
+$ poetry install --with=dev # to include development packages
 ```
 
 This installs the scripts described below.
-To make their command-line invocation a little nicer, the script files lack the `.py` extension.
-They are, however, Python scripts.
+To make their command-line invocation a little nicer, the scripts  lack the `.py` extension.
+They are, however, Python code.
+
+All of the scripts below can be run with `poetry run [script_name]`,
+or simply `[script_name]` if one has already invoked a shell in which
+the project is installed (accomplished with `poetry shell`).
 
 ## Development
 
 ### Testing
 
-Very regrettably, it is prohibitively difficult to install `cdo`
-([Climate Data Operators](https://code.mpimet.mpg.de/projects/cdo/wiki/Cdo%7Brbpy%7D))
-in the Travis CI environment.
-(NetCDF support isn't built into the debian cdo pacakges. Installing NetCDF proved very hard. Argh.)
-That said, `.travis.yml` is configured with commented out portions in anticipation of the day we can really run these
-tests in Travis.
-
-We can and MUST, however, run the tests on our development machines. It's as simple as
+Local testing, prior to pushing to Github (and running the Github
+Actions) can simply be done by invoking:
 
 ```bash
-pytest
+poetry run pytest
 ```
-
-(Oh, the unintended punning!)
 
 ### Releasing
 
 To create a versioned release:
 
-1. Increment `__version__` in `setup`
+1. Increment `__version__` in `pyproject.toml`
 2. Summarize the changes from the last release in `NEWS.md`
 3. Commit these changes, then tag the release:
 
   ```bash
-git add setup NEWS.md
+git add pyproject.toml NEWS.md
 git commit -m"Bump to version x.x.x"
 git tag -a -m"x.x.x" x.x.x
 git push --follow-tags

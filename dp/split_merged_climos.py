@@ -23,7 +23,6 @@ cdo = Cdo()
 
 
 def split_merged_climos(input_file, outdir):
-
     # Check that we can split this file
     if not input_file.is_multi_year_mean:
         raise ValueError("File is not a multi-year mean")

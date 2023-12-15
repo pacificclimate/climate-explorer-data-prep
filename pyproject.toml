@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "dp"
+version = "0.8.8"
+description = "PCIC Climate Explorer Data Preparation"
+authors = [
+   "Rod Glover <rglover@uvic.ca>",
+   "James Hiebert <hiebert@uvic.ca>",
+   "Nik Rados",
+   "Lee Zeman <lzeman@uvic.ca>",
+   "Cairo Sanders",
+   "Basil Veerman",
+   "Eric Yvorchuk <eyvorchuk@uvic.ca",
+   "Sangwon Lim"
+]
+license = "GPL3"
+readme = "README.md"
+include = [
+        "dp/data/*",
+        "tests/data/*.nc"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+python-dateutil = "~2.8"
+cdo = "~1.6"
+Pint = "^0.21" # upgrade after python > 3.9
+PyYAML = "~6.0"
+nchelpers = {version = "^5.5.11", source = "pcic"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-mock = "*"
+black = "*"
+pytest-xdist = "^3.5.0"
+
+[[tool.poetry.source]]
+name = "pcic"
+url = "https://pypi.pacificclimate.org/simple"
+priority = "supplemental"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+generate_climos = "dp.scripts.generate_climos:runme"
+generate_prsn = "dp.scripts.generate_prsn:runme"
+split_merged_climos = "dp.scripts.split_merged_climos:runme"
+update_metadata = "dp.scripts.update_metadata:runme"
+decompose_flow_vectors = "dp.scripts.decompose_flow_vectors:runme"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests that are slow (deselect with '-m \"not slow\"')",
+]
