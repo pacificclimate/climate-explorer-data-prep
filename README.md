@@ -49,20 +49,12 @@ the project is installed (accomplished with `poetry shell`).
 
 ### Testing
 
-Very regrettably, it is prohibitively difficult to install `cdo`
-([Climate Data Operators](https://code.mpimet.mpg.de/projects/cdo/wiki/Cdo%7Brbpy%7D))
-in the Travis CI environment.
-(NetCDF support isn't built into the debian cdo pacakges. Installing NetCDF proved very hard. Argh.)
-That said, `.travis.yml` is configured with commented out portions in anticipation of the day we can really run these
-tests in Travis.
-
-We can and MUST, however, run the tests on our development machines. It's as simple as
+Local testing, prior to pushing to Github (and running the Github
+Actions) can simply be done by invoking:
 
 ```bash
-poetry run py.test
+poetry run pytest
 ```
-
-(Oh, the unintended punning!)
 
 ### Releasing
 
