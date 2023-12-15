@@ -60,12 +60,12 @@ poetry run pytest
 
 To create a versioned release:
 
-1. Increment `__version__` in `setup`
+1. Increment `__version__` in `pyproject.toml`
 2. Summarize the changes from the last release in `NEWS.md`
 3. Commit these changes, then tag the release:
 
   ```bash
-git add setup NEWS.md
+git add pyproject.toml NEWS.md
 git commit -m"Bump to version x.x.x"
 git tag -a -m"x.x.x" x.x.x
 git push --follow-tags
