@@ -16,7 +16,7 @@ license = "GPL3"
 readme = "README.md"
 include = [
         "dp/data/*",
-        "tests/data/*.nc"
+        "dp/tests/data/*.nc"
 ]
 
 [tool.poetry.dependencies]

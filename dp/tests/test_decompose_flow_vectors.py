@@ -8,7 +8,6 @@ import subprocess
 import os
 import numpy as np
 import numpy.ma as ma
-import pkg_resources
 
 
 def create_routing_file(name, numlats, numlons, routes):

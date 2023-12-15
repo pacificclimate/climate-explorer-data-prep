@@ -1,15 +1,25 @@
+import sys
+from importlib import resources
+
 from pytest import fixture, mark
-from pkg_resources import resource_filename
 from nchelpers import CFDataset, standard_climo_periods
 
 
 # helpers
 def get_dataset(filename):
-    return CFDataset(resource_filename(__name__, "data/tiny_{}.nc").format(filename))
+    path = get_filepath(filename)
+    with CFDataset(path) as nc:
+        yield nc
 
 
 def get_filepath(file_key):
-    return resource_filename(__name__, "data/tiny_{}.nc").format(file_key)
+    if sys.version_info >= (3, 9):
+        ref = resources.files("dp") / f"tests/data/tiny_{file_key}.nc"
+        with resources.as_file(ref) as path:
+            return str(path)
+    else:
+        # fall back to using pkg_resources
+        pass
 
 
 @fixture
